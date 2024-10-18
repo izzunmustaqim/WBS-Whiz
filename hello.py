@@ -3,5 +3,6 @@ def greeting(name):
     print("こんにちは,",name)
     print("你好,",name)
     print("안녕하세요,",name)
+    print("Bonjour,",name)
 greeting("Woeld")     
  
