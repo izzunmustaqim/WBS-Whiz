@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import scrolledtext
 
+
 class App:
     def __init__(self, master):
         self.master = master
