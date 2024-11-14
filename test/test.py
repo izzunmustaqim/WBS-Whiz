@@ -4,11 +4,12 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import scrolledtext
 
+
 class App:
     def __init__(self, master):
         self.master = master
         master.title("AI API クライアント")
-
+        # asd
         self.pdf_label = tk.Label(master, text="PDFファイルを選択:")
         self.pdf_label.pack()
 
