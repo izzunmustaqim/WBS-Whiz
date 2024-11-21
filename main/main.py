@@ -1,4 +1,6 @@
 import json
+import os
+import shutil
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
@@ -70,6 +72,11 @@ class Application(tk.Frame):
         self.status_label = tk.Label(self, text="Processing, please wait...", wraplength=400)
         self.status_label.grid(row=11, column=0, columnspan=3, padx=10, pady=5)
         self.status_label.update_idletasks()  # Force the GUI to update
+
+        # Add a button to save a file and center it
+        self.master.grid_columnconfigure(0, weight=1)
+        self.master.grid_columnconfigure(2, weight=1)
+        tk.Button(self, text="Download WBS", command=self.download_result, width=10).grid(row=12, column=1, padx=10, pady=10, sticky='ew')
 
     def remove_result_section(self):
         if hasattr(self, 'separator'):
@@ -209,6 +216,28 @@ class Application(tk.Frame):
         finally:
             self.status_label.config(text="Process has completed successfully. You may download the WBS file using the download button below.")
  
+    def download_result(self):
+        try:
+            # Define the destination file path in the Downloads folder
+            downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+            destination_file_path = os.path.join(downloads_folder, "Details_WBS.xlsx")
+
+            # Create dummy file in the download folder
+            df = pd.DataFrame()
+            df.to_excel(destination_file_path, index=False)
+
+            # Get the current directory
+            current_directory = os.getcwd()
+
+            # Define the source file path
+            source_file_path = os.path.join(current_directory, "main\Details_WBS.xlsx")
+
+            # Copy the file
+            shutil.copy(source_file_path, destination_file_path)
+            messagebox.showinfo("Success", f"File saved successfully to {destination_file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save file: {e}")
+
     def validate_api_key(self, api_key):
         pattern = r'^[A-Za-z0-9]{48}$'        
         if not api_key:
