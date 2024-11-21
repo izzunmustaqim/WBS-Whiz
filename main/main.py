@@ -1,12 +1,15 @@
 import json
+import os
+import shutil
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from tkinter import ttk
+from openpyxl import load_workbook
 import pandas as pd
 import requests  # Import pandas
 import pandas as pd  # Import pandas
 import config   # Import the config file
 import webbrowser
-from tkcalendar import DateEntry
 import re
 import io
 import openpyxl
@@ -59,12 +62,34 @@ class Application(tk.Frame):
 
             tk.Button(self, text="Start", command=self.main, width=10).grid(row=8, column=1, padx=10, pady=10, sticky='e')
             tk.Button(self, text="Cancel", command=self.master.destroy, width=10).grid(row=8, column=2, padx=10, pady=10, sticky='w')
-        
-            # Status label to show process completion
-            self.status_label = tk.Label(self, text="")
-            self.status_label.grid(row=9, column=0, columnspan=3, padx=10, pady=10) 
-        
     
+    def create_result_section(self):
+        # Add a separator
+        self.separator = ttk.Separator(self, orient='horizontal')
+        self.separator.grid(row=9, column=0, columnspan=3, sticky='we', pady=10)
+
+        # Result section
+        self.result_section = tk.Label(self, text="Result: ")
+        self.result_section.grid(row=10, column=0, columnspan=3, padx=5, pady=5)
+
+        # Status label to show process completion
+        self.status_label = tk.Label(self, text="Processing, please wait...", wraplength=400)
+        self.status_label.grid(row=11, column=0, columnspan=3, padx=10, pady=5)
+        self.status_label.update_idletasks()  # Force the GUI to update
+
+        # Add a button to save a file and center it
+        self.master.grid_columnconfigure(0, weight=1)
+        self.master.grid_columnconfigure(2, weight=1)
+        tk.Button(self, text="Download WBS", command=self.download_result, width=10).grid(row=12, column=1, padx=10, pady=10, sticky='ew')
+
+    def remove_result_section(self):
+        if hasattr(self, 'separator'):
+            self.separator.grid_forget()
+        if hasattr(self, 'result_section'):
+            self.result_section.grid_forget()
+        if hasattr(self, 'status_label'):
+            self.status_label.grid_forget()
+
     def browse_file(self, entry, label):
         file_types = [("Excel files", "*.xlsx *.xls")]
         file_path = filedialog.askopenfilename(filetypes=file_types)
@@ -119,43 +144,45 @@ class Application(tk.Frame):
     #Send data to ChatAI for analysis
     def send_data_to_chatai(self):
         try:
-
-            self.status_label.config(text="Processing, please wait...")
-            self.status_label.update_idletasks()  # Force the GUI to update
-
-            #To extract only the start date and end date of the project 
-            start_date = self.task_details_data.iloc[1,2]
-            end_date = self.task_details_data.iloc[2,2]
-
-            #Convert the date data into string to pass for prompt
-            start_date_str = str(start_date)
-            end_date_str = str(end_date)
-
-            #Debug - print string start date and end date
-            print(start_date_str)
-            print(end_date_str)
+            # if repeat the process, clear the result section first
+            self.remove_result_section()
+ 
+            # Call the method to create the status section
+            self.create_result_section()
+           
+            # Load the Excel file
+            workbook = load_workbook(self.task_details_file)
+ 
+            # Select the active sheet (or specify a sheet name)
+            sheet = workbook.active
+ 
+            # Read the value from column C, row 2
+            start_date = sheet['C2'].value
+            end_date = sheet['C3'].value
+ 
+            # Debug - print the start date and end date
             print(start_date)
             print(end_date)
-
+ 
             # Define the API endpoint and hardcoded prompt
             api_endpoint = "https://ai-foundation-api.app/ai-foundation/chat-ai/gpt4"
             prompt = config.prompt.format(
                             task_details_data=self.task_details_data.to_json(),
                             skill_set_data=self.skill_set_data.to_json(),
-                            start_date_str=start_date_str,
-                            end_date_str=end_date_str,
+                            start_date_str=start_date,
+                            end_date_str=end_date,
                             task_description="Task Description Example",  # Provide example values for placeholders
                             assigned_to="Assigned to Example",
                             progress="To do",
                             plan_start_date="Start date Example",
                             plan_end_date="End date Example"
                         )
-
+ 
             headers = {
                 "Content-type": "application/json",
                 "api-key": self.api_key
             }
-
+ 
             payload = {
                 "messages": [
                 {
@@ -164,35 +191,57 @@ class Application(tk.Frame):
                 }
                 ]
             }
-            
+           
             # Send the POST request
             response = requests.post(api_endpoint, json=payload, headers=headers)
             response.raise_for_status()  # Raise an exception for HTTP errors
-            
+           
             # Check the response
             try:
                 analysis_result = response.json()
                 #print("Analysis Result:", analysis_result)
-
+ 
                 # Extract the content (only the wbs result)
                 content = analysis_result['choices'][0]['message']['content']
                 self.create_wbs(content, start_date)
                 print(content)
-
+ 
             except json.JSONDecodeError:
                 print("Error: The response is not in JSON format.")
                 print("Response content:", response.text)
-
+ 
         except requests.exceptions.RequestException as e:
             print("Failed to get a response from ChatAI. Status code:", response.status_code)
             print("Response content:", response.text)
             messagebox.showerror("Error", f"Failed to send data to ChatAI: {e}")
-
+ 
         except ValueError as ve:
             print(ve)
             messagebox.showerror("Error", str(ve))
         finally:
-            self.status_label.config(text="Process completed")
+            self.status_label.config(text="Process has completed successfully. You may download the WBS file using the download button below.")
+ 
+    def download_result(self):
+        try:
+            # Define the destination file path in the Downloads folder
+            downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+            destination_file_path = os.path.join(downloads_folder, "Details_WBS.xlsx")
+
+            # Create dummy file in the download folder
+            df = pd.DataFrame()
+            df.to_excel(destination_file_path, index=False)
+
+            # Get the current directory
+            current_directory = os.getcwd()
+
+            # Define the source file path
+            source_file_path = os.path.join(current_directory, "main\Details_WBS.xlsx")
+
+            # Copy the file
+            shutil.copy(source_file_path, destination_file_path)
+            messagebox.showinfo("Success", f"File saved successfully to {destination_file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save file: {e}")
 
     def validate_api_key(self, api_key):
         pattern = r'^[A-Za-z0-9]{48}$'        
