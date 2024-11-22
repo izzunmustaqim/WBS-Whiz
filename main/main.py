@@ -235,7 +235,7 @@ class Application(tk.Frame):
             current_directory = os.getcwd()
 
             # Define the source file path
-            source_file_path = os.path.join(current_directory, "main\Details_WBS.xlsx")
+            source_file_path = os.path.join(current_directory, "Details_WBS.xlsx")
 
             # Copy the file
             shutil.copy(source_file_path, destination_file_path)
@@ -287,7 +287,7 @@ class Application(tk.Frame):
 
         # Write the variable into cell
         ws['B2'] = "Details_WBS.xlsx"
-        ws['B6'] = start_date
+        ws['B6'] = datetime.strptime(start_date, "%Y-%m-%d").strftime("%m/%d/%Y")
         # Set current_date to the current date
         current_date = datetime.now().date()
         ws['G2'] = current_date
