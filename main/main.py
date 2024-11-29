@@ -81,7 +81,9 @@ class Application(tk.Frame):
         # Add a button to save a file and center it
         self.master.grid_columnconfigure(0, weight=1)
         self.master.grid_columnconfigure(2, weight=1)
-        tk.Button(self, text="Download WBS", command=self.download_result, width=10).grid(row=12, column=1, padx=10, pady=10, sticky='ew')
+        self.download_button = tk.Button(self, text="Download WBS", command=self.download_result, width=10)
+        self.download_button.grid(row=12, column=1, padx=10, pady=10, sticky='ew')
+        self.download_button.grid_remove()
 
     def remove_result_section(self):
         if hasattr(self, 'separator'):
@@ -90,6 +92,8 @@ class Application(tk.Frame):
             self.result_section.grid_forget()
         if hasattr(self, 'status_label'):
             self.status_label.grid_forget()
+        if hasattr(self, 'download_button'):
+            self.download_button.grid_remove()
 
     def browse_file(self, entry, label):
         file_types = [("Excel files", "*.xlsx *.xls")]
@@ -116,6 +120,9 @@ class Application(tk.Frame):
             t.start()
     
     def main(self):
+        # if repeat the process, clear the result section first
+        self.remove_result_section()
+        
         self.api_key = self.validate_api_key(self.api_key_entry.get())
         if not self.api_key:
             return
@@ -163,8 +170,6 @@ class Application(tk.Frame):
     #Send data to ChatAI for analysis
     def send_data_to_chatai(self):
         try:
-            # if repeat the process, clear the result section first
-            self.remove_result_section()
  
             # Call the method to create the status section
             self.create_result_section()
@@ -243,7 +248,8 @@ class Application(tk.Frame):
             messagebox.showerror("Error", str(ve))
         finally:
             self.status_label.config(text="Process has completed successfully. You may download the WBS file using the download button below.")
-  
+            self.download_button.grid()
+
     def download_result(self):
         try:
             # Define the destination file path in the Downloads folder
