@@ -122,7 +122,13 @@ class Application(tk.Frame):
 
         # Call read file function
         self.skill_set_data = self.read_file(self.skillset_file, 3, None)
+        if self.skill_set_data is None:
+            return  # Stop the process if the file is not found or an error occurred
+
         self.task_details_data = self.read_file(self.task_details_file, 1, "B:E")
+        if self.task_details_data is None:
+            return 
+        
         self.send_data_to_chatai()
 
     # rangecol=None mean will read all columns that has data
@@ -130,6 +136,10 @@ class Application(tk.Frame):
         # print(file, rowskip, rangecol)
         try:
             file_data = pd.read_excel(file, skiprows=rowskip, usecols=rangecol)  # Read Excel file using pandas
+            
+            # Check if the file is empty
+            if file_data.empty:
+                raise pd.errors.EmptyDataError("The file is empty")
             
             # Data cleaning steps
             file_data.dropna(axis=1, how='all', inplace=True)  # Remove columns with all missing values
@@ -139,12 +149,16 @@ class Application(tk.Frame):
             return(file_data)
         except FileNotFoundError:
             messagebox.showerror("Error", config.error_message["FileNotFoundError"])
+            return None
         except pd.errors.EmptyDataError:
             messagebox.showerror("Error", config.error_message["EmptyDataError"])
+            return None
         except pd.errors.ParserError:
             messagebox.showerror("Error", config.error_message["ParserError"])
+            return None
         except Exception as e:
             messagebox.showerror("Error", f"Failed to read Excel file: {e}")
+            return None
 
     #Send data to ChatAI for analysis
     def send_data_to_chatai(self):
@@ -211,7 +225,6 @@ class Application(tk.Frame):
                 #print("Analysis Result:", analysis_result)
  
                 # Extract the content (only the wbs result)
-            
                 content = analysis_result['candidates'][0]['content']['parts'][0]['text']
                 self.create_wbs(content, start_date)
                 print(content)
@@ -224,13 +237,13 @@ class Application(tk.Frame):
             print("Failed to get a response from ChatAI. Status code:", response.status_code)
             print("Response content:", response.text)
             messagebox.showerror("Error", f"Failed to send data to ChatAI: {e}")
- 
+
         except ValueError as ve:
             print(ve)
             messagebox.showerror("Error", str(ve))
         finally:
             self.status_label.config(text="Process has completed successfully. You may download the WBS file using the download button below.")
- 
+  
     def download_result(self):
         try:
             # Define the destination file path in the Downloads folder
