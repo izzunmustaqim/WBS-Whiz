@@ -120,6 +120,10 @@ class Application(tk.Frame):
             t.start()
     
     def main(self):
+
+        # if repeat the process, clear the result section first
+        self.remove_result_section()
+        
         self.api_key = self.validate_api_key(self.api_key_entry.get())
         if not self.api_key:
             return False
