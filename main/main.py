@@ -120,13 +120,21 @@ class Application(tk.Frame):
             t.start()
     
     def main(self):
+
         # if repeat the process, clear the result section first
         self.remove_result_section()
         
         self.api_key = self.validate_api_key(self.api_key_entry.get())
         if not self.api_key:
+            return False
+        
+        # Compare excel with template
+        if self.compare_excel(self.skillset_file, 'MEMBERS_SKILLSET.xlsx') == False:
             return
 
+        if self.compare_excel(self.task_details_file, 'Task Details Sample.xlsx') == False:
+            return
+        
         # Call read file function
         self.skill_set_data = self.read_file(self.skillset_file, 3, None)
         if self.skill_set_data is None:
@@ -137,6 +145,50 @@ class Application(tk.Frame):
             return 
         
         self.send_data_to_chatai()
+
+    def compare_excel(self, file, template_file): 
+        try:
+            workbook1 = load_workbook(file, data_only=True)
+            workbook2 = load_workbook(template_file, data_only=True)
+            sheet1 = workbook1.active
+            sheet2 = workbook2.active
+
+            comparison1_success = True
+            comparison2_success = True
+            comparison3_success = True
+    
+            if workbook1 == self.task_details_file:
+                # Comparison 1: Column B, rows 2-4
+                for row in range(2, 5):  # Rows 2, 3, 4
+                    if sheet1[f"B{row}"].value != sheet2[f"B{row}"].value:
+                        print(f"Comparison 1 failed: Cell B{row} differs.")
+                        comparison1_success = False
+    
+                # Comparison 2: Columns B-E, row 6
+            for col in range(2, 6):  # Columns B, C, D, E (2,3,4,5)
+                if sheet1[f"{chr(ord('B') + col - 2)}{6}"].value != sheet2[f"{chr(ord('B') + col - 2)}{6}"].value:
+                    print(f"Comparison 2 failed: Cell {chr(ord('B') + col - 2)}{6} differs.")
+                    comparison2_success = False
+    
+            if workbook1 == self.skillset_file:
+                # Comparison 3: Columns B-GP, rows 2-4
+                for row in range(2, 5):  # Rows 2, 3, 4
+                    for col in range(2, 188):  # Columns B (2) to GP (187)
+                        col_str = chr(col + 64)  # Convert column number to letter
+                        if sheet1.cell(row=row, column=col).value != sheet2.cell(row=row, column=col).value:
+                            print(f"Comparison 3 failed: Cell {col_str}{row} differs.")
+                            comparison3_success = False
+
+            overall_comparison = comparison1_success and comparison2_success and comparison3_success
+
+            print(f"Overall comparison: {overall_comparison}")
+            if overall_comparison != True:
+                messagebox.showerror("Overall Comparison", f"Please double check format/input in excel")
+                return overall_comparison
+        
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to compare Excel files: {e}")
+            return False
 
     # rangecol=None mean will read all columns that has data
     def read_file(self, file, rowskip=0, rangecol=None):
