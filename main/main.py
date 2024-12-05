@@ -27,6 +27,7 @@ class Application(tk.Frame):
         self.task_details_file = None  # Initialize task_file
         self.create_widgets()
         self.skill_set_data = None  # Initialize skill_set_data
+        self.ss_folder_file = []
 
     def create_widgets(self):
         # Add a new entry for the API key
@@ -129,34 +130,52 @@ class Application(tk.Frame):
         if hasattr(self, 'download_button'):
             self.download_button.grid_remove()
 
-    def browse_file(self, entry, label):
+    def browse_file(self, entry, label):   
+        selected_file_type = self.file_type.get()
         file_types = [("Excel files", "*.xlsx *.xls")]
-        if label == "Members skill set" or label == "Task Details":
-            file_path = filedialog.askopenfilename(filetypes=file_types)
-            if file_path:
-                if label == "Members skill set":
-                    self.skillset_file = file_path
-                    print(self.skillset_file)
-                else:
-                    self.task_details_file = file_path
+        try:
+            entry.config(state=tk.NORMAL)
+            entry.delete(1.0, tk.END)
+            if label == "Members skill set" or selected_file_type == "Task Details":
+                file_path = filedialog.askopenfilename(filetypes=file_types)
+                if file_path:
+                    if label == "Members skill set":
+                        self.skillset_file = file_path
+                        #print(self.skillset_file)
+                    else:
+                        self.task_details_file = file_path
 
-                entry.config(state=tk.NORMAL)
-                entry.delete(1.0, tk.END)
                 entry.insert(tk.END, file_path)
                 entry.config(state=tk.DISABLED)
             else:
-                messagebox.showerror("Error", "No file selected")
-        
-        else:
-            file_paths = filedialog.askopenfilenames(filetypes=file_types)
-            if file_paths:
+                # Select a folder
                 entry.config(state=tk.NORMAL)
                 entry.delete(1.0, tk.END)
-                for file_path in file_paths:
-                    entry.insert(tk.END, file_path + "\n")
-                entry.config(state=tk.DISABLED)
-            else:
-                messagebox.showerror("Error", "No file selected")
+                folder_path = filedialog.askdirectory()
+                if folder_path:
+                    self.ss_document_folder = folder_path
+                    # List all file paths in the selected folder
+                    folder_file_paths = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+                    
+                    # Check all files and only take Excel files
+                    for f in folder_file_paths:
+                        if (f.endswith('.xlsx') or f.endswith('.xls')):
+                            self.ss_folder_file.append(f)
+
+                    if len(self.ss_folder_file) > 5:
+                        messagebox.showerror("Error", "Too many Excel files detected. The folder must contain no more than 5 Excel files. Please check the folder and try again.")
+                        self.ss_folder_file.clear()  # Clear the list to prevent further processing
+                        return
+                    else:
+                        print("Files in the selected folder:")
+                        for file_path in self.ss_folder_file:
+                            entry.insert(tk.END, file_path + "\n")
+
+                    entry.config(state=tk.DISABLED)
+                else:
+                    messagebox.showerror("Error", "No folder selected")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while selecting the files: {e}")
 
     def open_url(self, url):
         webbrowser.open_new(url)
@@ -187,6 +206,16 @@ class Application(tk.Frame):
         self.task_details_data = self.read_file(self.task_details_file, 1, "B:E")
         if self.task_details_data is None:
             return 
+        
+        # Read all files in the selected folder
+        self.task_details_data = []
+        for file_path in self.selected_folder_file:
+            file_data = self.read_file(file_path, 1, None)
+            if file_data is not None:
+                print(file_data)
+                # self.task_details_data.append(file_data)
+            else:
+                return
         
         self.send_data_to_chatai()
     
