@@ -4,6 +4,7 @@ import shutil
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
+from tkcalendar import DateEntry
 from openpyxl import load_workbook
 import pandas as pd
 import requests  # Import pandas
@@ -32,38 +33,60 @@ class Application(tk.Frame):
         tk.Label(self, text="API Key").grid(row=0, column=0, padx=10, pady=5, sticky='w')
         self.api_key_entry = tk.Entry(self, width=40, show='*')
         self.api_key_entry.grid(row=0, column=1, padx=10, pady=5, sticky='we')
+        
+        # Members skillset input
+        tk.Label(self, text="Members skill set").grid(row=2, column=0, padx=10, pady=5, sticky='w')
+        self.skillset_entry = tk.Text(self, height=1, width=40)
+        self.skillset_entry.grid(row=2, column=1, padx=10, pady=5, sticky='we')
+        tk.Button(self, text="Browse", command=lambda e=self.skillset_entry, l="Members skill set": self.browse_file(e, l), width=10).grid(row=2, column=2, padx=10, pady=5)
+        
+        # Template download link
+        text_widget = tk.Text(self, height=1, width=40, font=("Helvetica", 8), bd=0, bg=self.cget("bg"))
+        text_widget.grid(row=3, column=1, padx=10, sticky='w')
+        text_widget.insert(tk.END, "Download template here: Members_skillset.xlsx")
+        text_widget.tag_add("link", "1.23", "1.end")
+        text_widget.tag_config("link", foreground="blue", underline=True)
+        text_widget.tag_bind("link", "<Button-1>", lambda e, url="https://fujitsu.sharepoint.com/:x:/r/teams/Asia-42f6e454-ChatAIContestAPG/Shared%20Documents/ChatAI%20Contest%20APG/Deliverable/Sprint%201/MEMBERS_SKILLSET.xlsx?d=w3087fb3ba54e43bab309789ad185a9a7&csf=1&web=1&e=5ekEi5": self.open_url(url))
 
-        labels = ["Members skill set", "Task details"]
-        descriptions = [
-            ("Download template here: Members_skillset.xlsx", "https://fujitsu.sharepoint.com/:x:/r/teams/Asia-42f6e454-ChatAIContestAPG/Shared%20Documents/ChatAI%20Contest%20APG/Deliverable/Sprint%201/MEMBERS_SKILLSET.xlsx?d=w3087fb3ba54e43bab309789ad185a9a7&csf=1&web=1&e=5ekEi5"),
-            ("Download template here: Task_details.xlsx", "https://fujitsu.sharepoint.com/:x:/r/teams/Asia-42f6e454-ChatAIContestAPG/Shared%20Documents/ChatAI%20Contest%20APG/Deliverable/Sprint%202/Task%20Details%20Sample.xlsx?d=w4ffbd7b446c146539859793651360c36&csf=1&web=1&e=jUauGt")
-        ]
-        self.entries = []
-        for i, (label, (description, url)) in enumerate(zip(labels, descriptions)):
-            tk.Label(self, text=label).grid(row=(i+1)*2, column=0, padx=10, pady=5, sticky='w')
-            entry = tk.Entry(self, width=40)
-            entry.grid(row=(i+1)*2, column=1, padx=10, pady=5)
-            self.entries.append(entry)
-            tk.Button(self, text="Browse", command=lambda e=entry, l=label: self.browse_file(e, l), width=10).grid(row=(i+1)*2, column=2, padx=10, pady=5)
-            
-            text_widget = tk.Text(self, height=1, width=40, font=("Helvetica", 8), bd=0, bg=self.cget("bg"))
-            text_widget.grid(row=(i+1)*2+1, column=1, padx=10, sticky='w')
-            text_widget.insert(tk.END, description)
-            
-            if "Members_skillset.xlsx" in description:
-                text_widget.tag_add("link", "1.23", "1.end")
-                text_widget.tag_config("link", foreground="blue", underline=True)
-                text_widget.tag_bind("link", "<Button-1>", lambda e, url=url: self.open_url(url))
-            else:
-                text_widget.tag_add("link", "1.23", "1.end")
-                text_widget.tag_config("link", foreground="blue", underline=True)
-                text_widget.tag_bind("link", "<Button-1>", lambda e, url=url: self.open_url(url))
-            
-            text_widget.config(state=tk.DISABLED)
+        # Add radio buttons for Task Details and SS
+        tk.Label(self, text="Input Details").grid(row=5, column=0, padx=10, pady=5, sticky='w')
+        self.file_type = tk.StringVar(value="SS Documents")
+        tk.Radiobutton(self, text="Task Details", variable=self.file_type, value="Task Details", command=self.update_file_selection).grid(row=5, column=1, padx=2, pady=5, sticky='w')
+        tk.Radiobutton(self, text="SS Documents", variable=self.file_type, value="SS Documents", command=self.update_file_selection).grid(row=5, column=1, padx=(100,0), pady=5, sticky='w')
+                
+         # Text area to display all selected files
+        self.input_details_entry = tk.Text(self, height=5, width=40)
+        self.input_details_entry.grid(row=6, column=1, padx=10, pady=5)
+        tk.Button(self, text="Browse", command=lambda e=self.input_details_entry: self.browse_file(e, self.file_type.get()), width=10).grid(row=6, column=2, padx=10, pady=(0,60))
+        
+        # Template download link
+        text_widget = tk.Text(self, height=1, width=40, font=("Helvetica", 8), bd=0, bg=self.cget("bg"))
+        text_widget.grid(row=7, column=1, padx=10, sticky='w')
+        text_widget.insert(tk.END, "Download template here: Task_details.xlsx")
+        text_widget.tag_add("link", "1.23", "1.end")
+        text_widget.tag_config("link", foreground="blue", underline=True)
+        text_widget.tag_bind("link", "<Button-1>", lambda e, url="https://fujitsu.sharepoint.com/:x:/r/teams/Asia-42f6e454-ChatAIContestAPG/Shared%20Documents/ChatAI%20Contest%20APG/Deliverable/Sprint%202/Task%20Details%20Sample.xlsx?d=w4ffbd7b446c146539859793651360c36&csf=1&web=1&e=jUauGt": self.open_url(url))
 
-            tk.Button(self, text="Start", command=self.button_starter, width=10).grid(row=8, column=1, padx=10, pady=10, sticky='e')
-            tk.Button(self, text="Cancel", command=self.master.destroy, width=10).grid(row=8, column=2, padx=10, pady=10, sticky='w')
+        # Start and End date picker
+        tk.Label(self, text="Project Duration").grid(row=9, column=0, padx=10, pady=10, sticky='w')
+        #Start date
+        tk.Label(self, text="Start:").grid(row=9, column=1, padx=8, pady=10, sticky='w')
+        self.start_date_entry = DateEntry(self, width=12, background='darkblue', foreground='white', borderwidth=2, mindate=datetime.now(), date_pattern='yyyy-MM-dd')
+        self.start_date_entry.grid(row=9, column=1, padx=(50,0), pady=10, sticky='w')
+        #End date
+        tk.Label(self, text="End:").grid(row=9, column=1, padx=(160,0), pady=10, sticky='w')
+        self.end_date_entry = DateEntry(self, width=12, background='darkblue', foreground='white', borderwidth=2, mindate=datetime.now(), date_pattern='yyyy-MM-dd')
+        self.end_date_entry.grid(row=9, column=1, padx=(200,0), pady=10, sticky='w')
+
+        # Start and Cancel button
+        tk.Button(self, text="Start", command=self.button_starter, width=10).grid(row=11, column=1, padx=10, pady=10, sticky='e')
+        tk.Button(self, text="Cancel", command=self.master.destroy, width=10).grid(row=11, column=2, padx=10, pady=10, sticky='w')
     
+    def update_file_selection(self):
+        self.input_details_entry.config(state=tk.NORMAL)
+        self.input_details_entry.delete(1.0, tk.END)
+        self.input_details_entry.config(state=tk.DISABLED)
+
     def create_result_section(self):
         # Add a separator
         self.separator = ttk.Separator(self, orient='horizontal')
@@ -97,20 +120,32 @@ class Application(tk.Frame):
 
     def browse_file(self, entry, label):
         file_types = [("Excel files", "*.xlsx *.xls")]
-        file_path = filedialog.askopenfilename(filetypes=file_types)
-        
-        if file_path:
-            entry.delete(0, tk.END)
-            entry.insert(0, file_path)
-            
-            if label == "Members skill set":
-                self.skillset_file = file_path
-                print(self.skillset_file)
+        if label == "Members skill set" or label == "Task Details":
+            file_path = filedialog.askopenfilename(filetypes=file_types)
+            if file_path:
+                if label == "Members skill set":
+                    self.skillset_file = file_path
+                    print(self.skillset_file)
+                else:
+                    self.task_details_file = file_path
+
+                entry.config(state=tk.NORMAL)
+                entry.delete(1.0, tk.END)
+                entry.insert(tk.END, file_path)
+                entry.config(state=tk.DISABLED)
             else:
-                self.task_details_file = file_path
-                print(self.task_details_file)
+                messagebox.showerror("Error", "No file selected")
+        
         else:
-            messagebox.showerror("Error", "No file selected")
+            file_paths = filedialog.askopenfilenames(filetypes=file_types)
+            if file_paths:
+                entry.config(state=tk.NORMAL)
+                entry.delete(1.0, tk.END)
+                for file_path in file_paths:
+                    entry.insert(tk.END, file_path + "\n")
+                entry.config(state=tk.DISABLED)
+            else:
+                messagebox.showerror("Error", "No file selected")
 
     def open_url(self, url):
         webbrowser.open_new(url)
@@ -120,21 +155,13 @@ class Application(tk.Frame):
             t.start()
     
     def main(self):
-
         # if repeat the process, clear the result section first
         self.remove_result_section()
         
         self.api_key = self.validate_api_key(self.api_key_entry.get())
         if not self.api_key:
-            return False
-        
-        # Compare excel with template
-        if self.compare_excel(self.skillset_file, 'MEMBERS_SKILLSET.xlsx') == False:
             return
 
-        if self.compare_excel(self.task_details_file, 'Task Details Sample.xlsx') == False:
-            return
-        
         # Call read file function
         self.skill_set_data = self.read_file(self.skillset_file, 3, None)
         if self.skill_set_data is None:
@@ -145,50 +172,6 @@ class Application(tk.Frame):
             return 
         
         self.send_data_to_chatai()
-
-    def compare_excel(self, file, template_file): 
-        try:
-            workbook1 = load_workbook(file, data_only=True)
-            workbook2 = load_workbook(template_file, data_only=True)
-            sheet1 = workbook1.active
-            sheet2 = workbook2.active
-
-            comparison1_success = True
-            comparison2_success = True
-            comparison3_success = True
-    
-            if workbook1 == self.task_details_file:
-                # Comparison 1: Column B, rows 2-4
-                for row in range(2, 5):  # Rows 2, 3, 4
-                    if sheet1[f"B{row}"].value != sheet2[f"B{row}"].value:
-                        print(f"Comparison 1 failed: Cell B{row} differs.")
-                        comparison1_success = False
-    
-                # Comparison 2: Columns B-E, row 6
-            for col in range(2, 6):  # Columns B, C, D, E (2,3,4,5)
-                if sheet1[f"{chr(ord('B') + col - 2)}{6}"].value != sheet2[f"{chr(ord('B') + col - 2)}{6}"].value:
-                    print(f"Comparison 2 failed: Cell {chr(ord('B') + col - 2)}{6} differs.")
-                    comparison2_success = False
-    
-            if workbook1 == self.skillset_file:
-                # Comparison 3: Columns B-GP, rows 2-4
-                for row in range(2, 5):  # Rows 2, 3, 4
-                    for col in range(2, 188):  # Columns B (2) to GP (187)
-                        col_str = chr(col + 64)  # Convert column number to letter
-                        if sheet1.cell(row=row, column=col).value != sheet2.cell(row=row, column=col).value:
-                            print(f"Comparison 3 failed: Cell {col_str}{row} differs.")
-                            comparison3_success = False
-
-            overall_comparison = comparison1_success and comparison2_success and comparison3_success
-
-            print(f"Overall comparison: {overall_comparison}")
-            if overall_comparison != True:
-                messagebox.showerror("Overall Comparison", f"Please double check format/input in excel")
-                return overall_comparison
-        
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to compare Excel files: {e}")
-            return False
 
     # rangecol=None mean will read all columns that has data
     def read_file(self, file, rowskip=0, rangecol=None):
@@ -291,12 +274,9 @@ class Application(tk.Frame):
                 print("Response content:", response.text)
  
         except requests.exceptions.RequestException as e:
-            if "Too Large" in str(e):
-                messagebox.showerror("Error", config.error_message["FileTooBig"])
-            else:
-                print("Failed to get a response from ChatAI. Status code:", response.status_code)
-                print("Response content:", response.text)
-                messagebox.showerror("Error", f"Failed to send data to ChatAI: {e}")
+            print("Failed to get a response from ChatAI. Status code:", response.status_code)
+            print("Response content:", response.text)
+            messagebox.showerror("Error", f"Failed to send data to ChatAI: {e}")
 
         except ValueError as ve:
             print(ve)
