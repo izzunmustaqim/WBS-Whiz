@@ -50,7 +50,7 @@ class Application(tk.Frame):
 
         # Add radio buttons for Task Details and SS
         tk.Label(self, text="Input Details").grid(row=5, column=0, padx=10, pady=5, sticky='w')
-        self.file_type = tk.StringVar(value="SS Documents")
+        self.file_type = tk.StringVar(value="Task Details")
         tk.Radiobutton(self, text="Task Details", variable=self.file_type, value="Task Details", command=self.update_file_selection).grid(row=5, column=1, padx=2, pady=5, sticky='w')
         tk.Radiobutton(self, text="SS Documents", variable=self.file_type, value="SS Documents", command=self.update_file_selection).grid(row=5, column=1, padx=(100,0), pady=5, sticky='w')
                 
@@ -79,10 +79,20 @@ class Application(tk.Frame):
         self.end_date_entry = DateEntry(self, width=12, background='darkblue', foreground='white', borderwidth=2, mindate=datetime.now(), date_pattern='MM/dd/yyyy')
         self.end_date_entry.grid(row=9, column=1, padx=(200,0), pady=10, sticky='w')
 
+        # Bind the validation function to the end date entry
+        self.end_date_entry.bind("<<DateEntrySelected>>", self.validate_dates)
+
         # Start and Cancel button
         tk.Button(self, text="Start", command=self.button_starter, width=10).grid(row=11, column=1, padx=10, pady=10, sticky='e')
         tk.Button(self, text="Cancel", command=self.master.destroy, width=10).grid(row=11, column=2, padx=10, pady=10, sticky='w')
     
+    def validate_dates(self, event):
+        start_date = self.start_date_entry.get_date()
+        end_date = self.end_date_entry.get_date()
+        if end_date < start_date:
+            messagebox.showerror("Error", "End date cannot be before start date")
+            self.end_date_entry.set_date(start_date)
+
     def update_file_selection(self):
         self.input_details_entry.config(state=tk.NORMAL)
         self.input_details_entry.delete(1.0, tk.END)
