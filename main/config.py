@@ -21,6 +21,8 @@ prompt = (
         )
 error_message = {
     "FileNotFoundError": "The file was not found. Please check the file path and try again.",
+    "FolderNotFoundError": "No folder selected. Please choose a folder and try again.",
+    "ManyExcelError": "Too many Excel files detected. The folder must contain no more than 5 Excel files. Please check the folder and try again.",
     "EmptyDataError": "The file is empty. Please provide a valid Excel file with data.",
     "ParserError": "There was a problem parsing the file. Please ensure the file is a valid Excel file.",
     "FileTooBig": "The file was to big. Please check the file and try again.",
