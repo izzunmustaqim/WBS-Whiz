@@ -5,7 +5,6 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 from tkcalendar import DateEntry
-from openpyxl import load_workbook
 import pandas as pd
 import requests  # Import pandas
 import pandas as pd  # Import pandas
@@ -14,6 +13,7 @@ import webbrowser
 import re
 import io
 import openpyxl
+from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from datetime import datetime
 from threading import Thread  # Import Thread class
@@ -141,7 +141,6 @@ class Application(tk.Frame):
                 if file_path:
                     if label == "Members skill set":
                         self.skillset_file = file_path
-                        #print(self.skillset_file)
                     else:
                         self.task_details_file = file_path
 
@@ -152,29 +151,28 @@ class Application(tk.Frame):
                 entry.config(state=tk.NORMAL)
                 entry.delete(1.0, tk.END)
                 folder_path = filedialog.askdirectory()
+                
                 if folder_path:
                     self.ss_document_folder = folder_path
-                    # List all file paths in the selected folder
-                    folder_file_paths = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-                    
-                    # Check all files and only take Excel files
-                    for f in folder_file_paths:
-                        if (f.endswith('.xlsx') or f.endswith('.xls')):
-                            self.ss_folder_file.append(f)
+                    # List all file paths in the selected folder and sub-folders
+                    folder_file_paths = []
+                    for root, _, files in os.walk(folder_path):
+                        for file in files:
+                            if file.endswith('.xlsx') or file.endswith('.xls'):
+                                folder_file_paths.append(os.path.join(root, file))
 
-                    if len(self.ss_folder_file) > 5:
-                        messagebox.showerror("Error", "Too many Excel files detected. The folder must contain no more than 5 Excel files. Please check the folder and try again.")
+                    if len(folder_file_paths) > 5:
+                        messagebox.showerror("Error", config.error_message["ManyExcelError"])
                         self.ss_folder_file.clear()  # Clear the list to prevent further processing
                         return
                     else:
-                        print("Files in the selected folder:")
-                        for file_path in self.ss_folder_file:
+                        print("Files in the selected folder and sub-folders:")
+                        for file_path in folder_file_paths:
                             entry.insert(tk.END, file_path + "\n")
-                            print(file_path) 
-
+                            self.ss_folder_file.append(file_path)
                     entry.config(state=tk.DISABLED)
                 else:
-                    messagebox.showerror("Error", "No folder selected")
+                    messagebox.showerror("Error", config.error_message["FolderNotFoundError"])
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred while selecting the files: {e}")
 
@@ -193,7 +191,7 @@ class Application(tk.Frame):
         if not self.api_key:
             return False
         
-        # # Compare excel with template
+        # Compare excel with template
         # if self.compare_excel(self.skillset_file, 'MEMBERS_SKILLSET.xlsx') == False:
         #     return
         
@@ -258,7 +256,7 @@ class Application(tk.Frame):
         except Exception as e:
             messagebox.showerror("Error", f"Failed to compare Excel files: {e}")
             return False
-
+        
     # rangecol=None mean will read all columns that has data
     def read_file(self, file, rowskip=0, rangecol=None):
         # print(file, rowskip, rangecol)
@@ -273,7 +271,7 @@ class Application(tk.Frame):
             file_data.dropna(axis=1, how='all', inplace=True)  # Remove columns with all missing values
             file_data.fillna(0, inplace=True)  # Replace NaN values with 0
             
-            print(file_data)  # Print the task details data for debugging
+            # print(file_data)  # Print the task details data for debugging
             return(file_data)
         except FileNotFoundError:
             messagebox.showerror("Error", config.error_message["FileNotFoundError"])
@@ -302,12 +300,16 @@ class Application(tk.Frame):
             elif "Event Process Sequence Diagram History" in file_path:
                  event_process_diagram_history_files.append(file_path)
             elif "Screen Layout" in file_path:
+                print("In here")
                 screen_layout_files.append(file_path)
         
         # Print the results
         print("\nScreen Layout Files:")
         for file in screen_layout_files:
-            # call function read screen layout files
+            sheetName = "項目定義"
+            keywordsHeader = ['画面項目名\n/Screen Item Name', 'タイプ\n/ Type']
+            data = self.read_screen_layout(file, sheetName, keywordsHeader)
+            print(f"{data}")
             pass
 
         print("Application Detailed Specification Files:")
@@ -323,6 +325,61 @@ class Application(tk.Frame):
         #     # call function read event process diagram history files
         #     pass
         
+    def read_screen_layout(self, file, sheetName, keywordsHeader):
+        try:
+            workbook = load_workbook(filename=file)
+            sheet_names = [] # Initialize an empty list for sheet names
+
+            # Iterate through each worksheet in the workbook
+            for sheet in workbook.worksheets:
+                sheet_names.append(sheet.title)
+
+            # Check if the file is an Application Detailed Specification file
+            self.check_file_validity(sheet_names, workbook, file)
+
+            sheet = workbook[sheetName]  
+            screen_layout_data = []
+            start_found = False
+
+            for row in sheet.iter_rows(values_only=True):
+                filtered_row = []
+                for cell in row:
+                    if cell is not None:
+                        filtered_row.append(cell)
+
+                if any(keyword in str(cell) for keyword in keywordsHeader for cell in filtered_row):
+                    start_found = True
+                    
+                if start_found:
+                    if filtered_row != [] and '画面項目名\n/Screen Item Name' not in filtered_row:
+                        screen_layout_data.append(filtered_row)
+
+            # Initialize the JSON structure
+            screen_layout_json = {
+                "Screen Layout": [],
+            }
+    
+            for row in screen_layout_data:
+                if len(row) > 1 and (row[1] != '-' or row[2] != '-'):
+                    screen_layout_json["Screen Layout"].append({
+                        "Screen Item Name": row[1],
+                        "Type": row[2],
+                    })
+            
+            # Convert to JSON string for readability
+            json_string = json.dumps(screen_layout_json, indent=4)
+            return json_string
+    
+        except FileNotFoundError:
+            messagebox.showerror("Error", config.error_message["FileNotFoundError"])
+            return None
+        except ValueError as e:
+            messagebox.showerror("Error", config.error_message["EmptyDataError"])
+            return None
+        except Exception as e:
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
+            return None
+
     def read_application_detailed_specification_files(self, file_path):
         # Read application detailed specification files
         try:
