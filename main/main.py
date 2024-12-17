@@ -170,7 +170,6 @@ class Application(tk.Frame):
                         for file_path in folder_file_paths:
                             entry.insert(tk.END, file_path + "\n")
                             self.ss_folder_file.append(file_path)
-
                     entry.config(state=tk.DISABLED)
                 else:
                     messagebox.showerror("Error", config.error_message["FolderNotFoundError"])
@@ -308,7 +307,7 @@ class Application(tk.Frame):
         print("\nScreen Layout Files:")
         for file in screen_layout_files:
             sheetName = "項目定義"
-            keywordsHeader = ['画面項目名/Screen Item Name', 'タイプ / Type']
+            keywordsHeader = ['画面項目名\n/Screen Item Name', 'タイプ\n/ Type']
             data = self.read_screen_layout(file, sheetName, keywordsHeader)
             print(f"{data}")
             pass
@@ -352,7 +351,7 @@ class Application(tk.Frame):
                     start_found = True
                     
                 if start_found:
-                    if filtered_row != [] and '画面項目名/Screen Item Name' not in filtered_row:
+                    if filtered_row != [] and '画面項目名\n/Screen Item Name' not in filtered_row:
                         screen_layout_data.append(filtered_row)
 
             # Initialize the JSON structure
