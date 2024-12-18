@@ -1,3 +1,19 @@
+prompt_list_task = (
+                        "#Input"
+                        "{screen_layout_json}"
+                        "{app_detailed_spec_data_converted_json}"
+
+                        "#INSTRUCTIONS"
+                        "As a project manager, create the task details for the project. The inputs are the screen layout details and Application Detailed Specification Files."
+                        "Please provide the information in table format, where each title should be a header"
+                        "Please state the complexity of each task priority"
+                        "It should consist only of the following:"
+                        "No       |   Task Description          |    Complexity"
+                        "1.       |     Task 1                  |    hard/mediuam/easy"
+                        "   1.1   |         Subtask 1           |    hard/medium/easy"
+                        "2.       |     Task 2                  |    hard/medium/easy"
+                    )
+
 prompt = (
             "#Input"
             "{task_details_data} "

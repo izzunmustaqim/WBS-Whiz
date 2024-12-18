@@ -27,7 +27,10 @@ class Application(tk.Frame):
         self.task_details_file = None  # Initialize task_file
         self.create_widgets()
         self.skill_set_data = None  # Initialize skill_set_data
+        self.task_details_data = None
         self.ss_folder_file = []
+        self.screen_layout_json = None
+        self.app_detailed_spec_data_converted_json = None
 
     def create_widgets(self):
         # Add a new entry for the API key
@@ -102,22 +105,22 @@ class Application(tk.Frame):
     def create_result_section(self):
         # Add a separator
         self.separator = ttk.Separator(self, orient='horizontal')
-        self.separator.grid(row=9, column=0, columnspan=3, sticky='we', pady=10)
+        self.separator.grid(row=12, column=0, columnspan=3, sticky='we', pady=10)
 
         # Result section
         self.result_section = tk.Label(self, text="Result: ")
-        self.result_section.grid(row=10, column=0, columnspan=3, padx=5, pady=5)
+        self.result_section.grid(row=13, column=0, columnspan=3, padx=5, pady=5)
 
         # Status label to show process completion
         self.status_label = tk.Label(self, text="Processing, please wait...", wraplength=400)
-        self.status_label.grid(row=11, column=0, columnspan=3, padx=10, pady=5)
+        self.status_label.grid(row=14, column=0, columnspan=3, padx=10, pady=5)
         self.status_label.update_idletasks()  # Force the GUI to update
 
         # Add a button to save a file and center it
         self.master.grid_columnconfigure(0, weight=1)
         self.master.grid_columnconfigure(2, weight=1)
         self.download_button = tk.Button(self, text="Download WBS", command=self.download_result, width=10)
-        self.download_button.grid(row=12, column=1, padx=10, pady=10, sticky='ew')
+        self.download_button.grid(row=15, column=1, padx=10, pady=10, sticky='ew')
         self.download_button.grid_remove()
 
     def remove_result_section(self):
@@ -210,7 +213,13 @@ class Application(tk.Frame):
                 return
         else:
             self.read_ss_folder_files()
-             
+
+        # print(f"Result in main :")
+        # print(self.screen_layout_json)
+        # print('---------------------------------------------------------')
+        # print(self.app_detailed_spec_data_converted_json)
+
+        self.request_task_details()
         # self.send_data_to_chatai()
     
     def compare_excel(self, file, template_file): 
@@ -300,7 +309,6 @@ class Application(tk.Frame):
             elif "Event Process Sequence Diagram History" in file_path:
                  event_process_diagram_history_files.append(file_path)
             elif "Screen Layout" in file_path:
-                print("In here")
                 screen_layout_files.append(file_path)
         
         # Print the results
@@ -308,8 +316,8 @@ class Application(tk.Frame):
         for file in screen_layout_files:
             sheetName = "項目定義"
             keywordsHeader = ['画面項目名\n/Screen Item Name', 'タイプ\n/ Type']
-            data = self.read_screen_layout(file, sheetName, keywordsHeader)
-            print(f"{data}")
+            self.screen_layout_json = self.read_screen_layout(file, sheetName, keywordsHeader)
+            print(f"{self.screen_layout_json}")
             pass
 
         print("Application Detailed Specification Files:")
@@ -317,8 +325,8 @@ class Application(tk.Frame):
             # print(file)
             # call function read application detailed specification files
             app_detailed_spec_data = self.read_application_detailed_specification_files(file)
-            app_detailed_spec_data_converted_json = self.convert_app_detailed_spec_data(app_detailed_spec_data)
-            print(app_detailed_spec_data_converted_json)
+            self.app_detailed_spec_data_converted_json = self.convert_app_detailed_spec_data(app_detailed_spec_data)
+            print(self.app_detailed_spec_data_converted_json)
 
         # print("\nEvent Process Sequence Diagram History Files:")
         # for file in event_process_diagram_history_files:
@@ -545,6 +553,69 @@ class Application(tk.Frame):
         # print(json_string)
         return json_string
 
+    def request_task_details(self):
+        try:
+            # Call the method to create the status section
+            self.create_result_section()
+
+            # Define the API endpoint and hardcoded prompt
+            api_endpoint = "https://api.ai-service.global.fujitsu.com/ai-foundation/chat-ai/gemini/pro:generateContent" 
+            prompt = config.prompt_list_task.format(
+                            screen_layout_json=self.screen_layout_json,
+                            app_detailed_spec_data_converted_json=self.app_detailed_spec_data_converted_json
+                        )
+ 
+            headers = {
+                "Content-type": "application/json",
+                "api-key": self.api_key
+            }
+
+            payload = {
+                "contents": [
+                {
+                    "role": "user",
+                    "parts": [
+                        {
+                            "text": prompt
+                        }
+                    ]
+                }
+                ]
+            }
+           
+            # Send the POST request
+            response = requests.post(api_endpoint, headers=headers, json=payload)
+            response.raise_for_status()  # Raise an exception for HTTP errors
+           
+            # Check the response
+            try:
+                analysis_result = response.json()
+                print("Analysis Result:", analysis_result)
+ 
+                # Extract the content (only the wbs result)
+                content = analysis_result['candidates'][0]['content']['parts'][0]['text']
+                # self.create_wbs(content, start_date)
+                print("Response from chat AI for the Task Details")
+                print(content)
+ 
+            except json.JSONDecodeError:
+                print("Error: The response is not in JSON format.")
+                print("Response content:", response.text)
+ 
+        except requests.exceptions.RequestException as e:
+            if "Too Large" in str(e):
+                messagebox.showerror("Error", config.error_message["FileTooBig"])
+            else:
+                print("Failed to get a response from ChatAI. Status code:", response.status_code)
+                print("Response content:", response.text)
+                messagebox.showerror("Error", f"Failed to send data to ChatAI: {e}")
+
+        except ValueError as ve:
+            print(ve)
+            messagebox.showerror("Error", str(ve))
+        finally:
+            self.status_label.config(text="Process Task Details has completed successfully. Creating WBS is in progress.")
+    
     #Send data to ChatAI for analysis
     def send_data_to_chatai(self):
         try:
