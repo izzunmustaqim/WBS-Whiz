@@ -17,6 +17,8 @@ from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from datetime import datetime
 from threading import Thread  # Import Thread class
+import base64  # Import base64 module
+from PIL import Image  # Import Image class from PIL module
 
 class Application(tk.Frame):
     def __init__(self, master=None):
@@ -320,10 +322,11 @@ class Application(tk.Frame):
             app_detailed_spec_data_converted_json = self.convert_app_detailed_spec_data(app_detailed_spec_data)
             print(app_detailed_spec_data_converted_json)
 
-        # print("\nEvent Process Sequence Diagram History Files:")
-        # for file in event_process_diagram_history_files:
-        #     # call function read event process diagram history files
-        #     pass
+        print("\nEvent Process Sequence Diagram History Files:")
+        for file in event_process_diagram_history_files:
+            # call function read event process sequence diagram history files
+            event_Process_Sequence_Diagram_History_Files = self.event_Process_Sequence_Diagram_History_Files(file)
+            print(event_Process_Sequence_Diagram_History_Files)
         
     def read_screen_layout(self, file, sheetName, keywordsHeader):
         try:
@@ -427,7 +430,79 @@ class Application(tk.Frame):
         except Exception as e:
             messagebox.showerror("Error", f"Failed to read Excel file: {e}")
             return None
-        
+    
+    def event_Process_Sequence_Diagram_History_Files(self, file_path):
+        try:
+            sheet_names = [] # Initialize an empty list for sheet names
+            workbook = load_workbook(file_path, data_only=True)
+
+            # Iterate through each worksheet in the workbook
+            for sheet in workbook.worksheets:
+                sheet_names.append(sheet.title)
+                print(sheet.title)
+
+            # # Check if the file is an Application Detailed Specification file
+            # self.check_file_validity(sheet_names, workbook, file_path)
+            
+            sheet = workbook[sheet_names[2]] # Select the third sheet
+
+            # Extract images from the Excel file
+            images = []
+            for idx, image in enumerate(sheet._images):
+                # Convert the openpyxl image to a PIL image
+                image_stream = io.BytesIO(image._data())
+                img = Image.open(image_stream)
+                images.append(img)
+                
+                # Save the image to a file
+                img.save(f'image_{idx + 1}.png')
+
+            image_path = "image_1.png"
+            description = self.describe_image(image_path)
+            # Delete the file
+            os.remove(image_path)
+            return description
+            # print(description)
+
+        except FileNotFoundError:
+            messagebox.showerror("Error", config.error_message["FileNotFoundError"])
+            return None
+        except pd.errors.EmptyDataError:
+            messagebox.showerror("Error", config.error_message["EmptyDataError"])
+            return None
+        except pd.errors.ParserError:
+            messagebox.showerror("Error", config.error_message["ParserError"])
+            return None
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to read Excel file: {e}")
+            return None
+
+    def describe_image(self, img):
+        encoded_image = self.encode_image(img)
+    
+        headers = {
+            "Content-type": "application/json",
+            "api-key": "PzGY0O7MKAUEoU82AAfBiBLfvp3GT7GvGVA8vn7so6hAm2jG"
+        }
+    
+        data = {
+            "messages": [
+                {"role": "user", "content": [
+                    {"type": "text", "text": "Please describe the image below."},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
+                ]}
+            ]
+        }
+    
+        response = requests.post("https://ai-foundation-api.app/ai-foundation/chat-ai/gpt4", headers=headers, json=data)
+        response_json = response.json()
+        # print(response_json)
+        return response_json["choices"][0]["message"]["content"]
+
+    def encode_image(self,img):
+        with open(img, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+    
     def check_file_validity(self, sheet_names, workbook, file_path):
         file_size = os.path.getsize(file_path)
         max_mb = 2000000 * 1024 * 1024  # 2M MB in bytes
