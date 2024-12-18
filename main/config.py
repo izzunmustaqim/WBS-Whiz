@@ -2,10 +2,13 @@ prompt_list_task = (
                         "#Input"
                         "{screen_layout_json}"
                         "{app_detailed_spec_data_converted_json}"
-
+ 
                         "#INSTRUCTIONS"
                         "As a project manager, create the task details for the project. The inputs are the screen layout details and Application Detailed Specification Files."
-                        "Please provide the information in table format, where each title should be a header"
+                        "Please provide the information in table format as below"
+                        "Please sort the task considering logic that the screen should have completed first then the function can be developed"
+                        "If any of the task is related or can be grouped as one, you may do so"
+                        "Please make sure the first row of each task is not the title or header for the subtask. Instead, it should be the initial task before the subtaskW"
                         "Please state the complexity of each task priority"
                         "It should consist only of the following:"
                         "No       |   Task Description          |    Complexity"
