@@ -425,22 +425,43 @@ class Application(tk.Frame):
     
         headers = {
             "Content-type": "application/json",
-            "api-key": "PzGY0O7MKAUEoU82AAfBiBLfvp3GT7GvGVA8vn7so6hAm2jG"
+            "api-key": self.api_key
         }
     
+        # data = {
+        #     "messages": [
+        #         {"role": "user", "content": [
+        #             {"type": "text", "text": "Please describe the image below."},
+        #             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
+        #         ]}
+        #     ]
+        # }
+
         data = {
-            "messages": [
-                {"role": "user", "content": [
-                    {"type": "text", "text": "Please describe the image below."},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
-                ]}
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [
+                        {
+                            "inlineData": {
+                                "mimeType": "image/jpeg",
+                                "data": encoded_image
+                            }
+                        },
+                        {
+                            "text": "What is shown this image?"
+                        }
+                    ]
+                }
             ]
         }
     
-        response = requests.post("https://ai-foundation-api.app/ai-foundation/chat-ai/gpt4", headers=headers, json=data)
+        # response = requests.post("https://ai-foundation-api.app/ai-foundation/chat-ai/gpt4", headers=headers, json=data)
+        response = requests.post("https://api.ai-service.global.fujitsu.com/ai-foundation/chat-ai/gemini/pro:generateContent", headers=headers, json=data)
         response_json = response.json()
         # print(response_json)
-        return response_json["choices"][0]["message"]["content"]
+        # return response_json["choices"][0]["message"]["content"]
+        return response_json['candidates'][0]['content']['parts'][0]['text']
 
     def encode_image(self,img):
         with open(img, "rb") as image_file:
