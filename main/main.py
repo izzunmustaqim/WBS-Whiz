@@ -29,7 +29,11 @@ class Application(tk.Frame):
         self.task_details_file = None  # Initialize task_file
         self.create_widgets()
         self.skill_set_data = None  # Initialize skill_set_data
+        self.task_details_data = None
         self.ss_folder_file = []
+        self.screen_layout_json = None
+        self.app_detailed_spec_data_converted_json = None
+        self.flowchart_image_path = None
 
     def create_widgets(self):
         # Add a new entry for the API key
@@ -104,22 +108,22 @@ class Application(tk.Frame):
     def create_result_section(self):
         # Add a separator
         self.separator = ttk.Separator(self, orient='horizontal')
-        self.separator.grid(row=9, column=0, columnspan=3, sticky='we', pady=10)
+        self.separator.grid(row=12, column=0, columnspan=3, sticky='we', pady=10)
 
         # Result section
         self.result_section = tk.Label(self, text="Result: ")
-        self.result_section.grid(row=10, column=0, columnspan=3, padx=5, pady=5)
+        self.result_section.grid(row=13, column=0, columnspan=3, padx=5, pady=5)
 
         # Status label to show process completion
         self.status_label = tk.Label(self, text="Processing, please wait...", wraplength=400)
-        self.status_label.grid(row=11, column=0, columnspan=3, padx=10, pady=5)
+        self.status_label.grid(row=14, column=0, columnspan=3, padx=10, pady=5)
         self.status_label.update_idletasks()  # Force the GUI to update
 
         # Add a button to save a file and center it
         self.master.grid_columnconfigure(0, weight=1)
         self.master.grid_columnconfigure(2, weight=1)
         self.download_button = tk.Button(self, text="Download WBS", command=self.download_result, width=10)
-        self.download_button.grid(row=12, column=1, padx=10, pady=10, sticky='ew')
+        self.download_button.grid(row=15, column=1, padx=10, pady=10, sticky='ew')
         self.download_button.grid_remove()
 
     def remove_result_section(self):
@@ -132,7 +136,9 @@ class Application(tk.Frame):
         if hasattr(self, 'download_button'):
             self.download_button.grid_remove()
 
-    def browse_file(self, entry, label):   
+    def browse_file(self, entry, label): 
+        # if the process is repeated - clear the list first
+        self.ss_folder_file.clear()
         selected_file_type = self.file_type.get()
         file_types = [("Excel files", "*.xlsx *.xls")]
         try:
@@ -212,7 +218,13 @@ class Application(tk.Frame):
                 return
         else:
             self.read_ss_folder_files()
-             
+            self.request_task_details()
+
+        # print(f"Result in main :")
+        # print(self.screen_layout_json)
+        # print('---------------------------------------------------------')
+        # print(self.app_detailed_spec_data_converted_json)
+
         # self.send_data_to_chatai()
     
     def compare_excel(self, file, template_file): 
@@ -302,7 +314,6 @@ class Application(tk.Frame):
             elif "Event Process Sequence Diagram History" in file_path:
                  event_process_diagram_history_files.append(file_path)
             elif "Screen Layout" in file_path:
-                print("In here")
                 screen_layout_files.append(file_path)
         
         # Print the results
@@ -310,8 +321,8 @@ class Application(tk.Frame):
         for file in screen_layout_files:
             sheetName = "項目定義"
             keywordsHeader = ['画面項目名\n/Screen Item Name', 'タイプ\n/ Type']
-            data = self.read_screen_layout(file, sheetName, keywordsHeader)
-            print(f"{data}")
+            self.screen_layout_json = self.read_screen_layout(file, sheetName, keywordsHeader)
+            print(f"{self.screen_layout_json}")
             pass
 
         print("Application Detailed Specification Files:")
@@ -319,14 +330,14 @@ class Application(tk.Frame):
             # print(file)
             # call function read application detailed specification files
             app_detailed_spec_data = self.read_application_detailed_specification_files(file)
-            app_detailed_spec_data_converted_json = self.convert_app_detailed_spec_data(app_detailed_spec_data)
-            print(app_detailed_spec_data_converted_json)
+            self.app_detailed_spec_data_converted_json = self.convert_app_detailed_spec_data(app_detailed_spec_data)
+            print(self.app_detailed_spec_data_converted_json)
 
         print("\nEvent Process Sequence Diagram History Files:")
         for file in event_process_diagram_history_files:
             # call function read event process sequence diagram history files
-            event_Process_Sequence_Diagram_History_Files = self.event_Process_Sequence_Diagram_History_Files(file)
-            print(event_Process_Sequence_Diagram_History_Files)
+            self.flowchart_image_path = self.event_Process_Sequence_Diagram_History_Files(file)
+            # print(flowchart_image)
         
     def read_screen_layout(self, file, sheetName, keywordsHeader):
         try:
@@ -442,7 +453,7 @@ class Application(tk.Frame):
                 print(sheet.title)
 
             # # Check if the file is an Application Detailed Specification file
-            # self.check_file_validity(sheet_names, workbook, file_path)
+            self.check_file_validity(sheet_names, workbook, file_path)
             
             sheet = workbook[sheet_names[2]] # Select the third sheet
 
@@ -458,10 +469,10 @@ class Application(tk.Frame):
                 img.save(f'image_{idx + 1}.png')
 
             image_path = "image_1.png"
-            description = self.describe_image(image_path)
+            #description = self.describe_image(image_path)
             # Delete the file
-            os.remove(image_path)
-            return description
+            # os.remove(image_path)
+            return image_path
             # print(description)
 
         except FileNotFoundError:
@@ -542,7 +553,7 @@ class Application(tk.Frame):
                         raise ValueError("The file is not a Screen Layout file")
                     elif "Application Detailed Specification" in file_path and "アプリケーション詳細仕様\n/Application Detailed Specification" not in filtered_row:
                         raise ValueError("The file is not an Application Detailed Specification file")
-                    elif "Event Process Sequence Diagram History" in file_path and "イベント処理シーケンス図履歴\n/Event Process Sequence Diagram History" not in filtered_row:
+                    elif "Event Process Sequence Diagram History" in file_path and "イベント処理シーケンス図\n/Event Process Sequence Diagram" not in filtered_row:
                         raise ValueError("The file is not an Event Process Sequence Diagram History file")
                     else:
                         return True
@@ -641,6 +652,75 @@ class Application(tk.Frame):
         # print(json_string)
         return json_string
 
+    def request_task_details(self):
+        try:
+            # Call the method to create the status section
+            self.create_result_section()
+
+            encoded_image = self.encode_image(self.flowchart_image_path)
+    
+            headers = {
+                "Content-type": "application/json",
+                "api-key": self.api_key
+            }
+            prompt = config.prompt_list_task.format(
+                            screen_layout_json=self.screen_layout_json,
+                            app_detailed_spec_data_converted_json=self.app_detailed_spec_data_converted_json
+                        )
+            api_endpoint = "https://api.ai-service.global.fujitsu.com/ai-foundation/chat-ai/gemini/pro:generateContent" 
+
+            data = {
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [
+                            {
+                                "inlineData": {
+                                    "mimeType": "image/jpeg",
+                                    "data": encoded_image
+                                }
+                            },
+                            {
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ]
+            }
+        
+            # Send the POST request
+            response = requests.post(api_endpoint, headers=headers, json=data)
+            response.raise_for_status()  # Raise an exception for HTTP errors
+            os.remove(self.flowchart_image_path)
+           
+            # Check the response
+            try:
+                analysis_result = response.json()
+                # print("Analysis Result:", analysis_result)
+                # Extract the content (only the wbs result)
+                content = analysis_result['candidates'][0]['content']['parts'][0]['text']
+                # self.create_wbs(content, start_date)
+                print("Response from chat AI for the Task Details")
+                print(content)
+ 
+            except json.JSONDecodeError:
+                print("Error: The response is not in JSON format.")
+                print("Response content:", response.text)
+ 
+        except requests.exceptions.RequestException as e:
+            if "Too Large" in str(e):
+                messagebox.showerror("Error", config.error_message["FileTooBig"])
+            else:
+                print("Failed to get a response from ChatAI. Status code:", response.status_code)
+                print("Response content:", response.text)
+                messagebox.showerror("Error", f"Failed to send data to ChatAI: {e}")
+
+        except ValueError as ve:
+            print(ve)
+            messagebox.showerror("Error", str(ve))
+        finally:
+            self.status_label.config(text="Process Task Details has completed successfully. Creating WBS is in progress.")
+    
     #Send data to ChatAI for analysis
     def send_data_to_chatai(self):
         try:
