@@ -31,10 +31,11 @@ prompt = (
             "For low task priority first assign to junior developer then middle developer"
             "Please also consider the skills needed for each task with the member with high level skills for that particular need"
             "The output should include all members for each task and one task for one person only"
+            "The task description list should follow exactly like the task details data without the complexity"
             "Please estimate the duration of each task without including it in the result. Then, set the start date and end date based on the duration."
-            "Please use the date range from the input data for start date = {start_date_str} and end date = {end_date_str} for each of the task."
             "Please fully utilize the date but do not exceed the project's end date at {end_date_str}"
-            "It should consists of:"
+            "Please use the date range from the input data for start date = {start_date_str} and end date = {end_date_str} for each of the task."
+            "It should only consists of:"
                 
             "| Item No. | Task Description: {task_description} | Assigned to: {assigned_to} | Progress: {progress} | Plan Start date: {plan_start_date} | Plan End date: {plan_end_date} |\n"
             # "| Item No. | Task Description: {Task Description} | Assigned to: {Assigned to based on the input data of the task} | Progress: {Progress of the task either To do/In progress/Waiting for Review/Done, default is To do} | Plan Start date: {Start date based on the input data of the task} | Plan End date: {End date based on the input data of the task} |\n"
