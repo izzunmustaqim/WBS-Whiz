@@ -35,6 +35,7 @@ class Application(tk.Frame):
         self.app_detailed_spec_data_converted_json = None
         self.flowchart_image_path = None
         self.task_details_response = NotImplemented
+        self.task_list = []
 
     def create_widgets(self):
         # Add a new entry for the API key
@@ -58,22 +59,18 @@ class Application(tk.Frame):
 
         # Add radio buttons for Task Details and SS
         tk.Label(self, text="Input Details").grid(row=5, column=0, padx=10, pady=5, sticky='w')
-        self.file_type = tk.StringVar(value="Task Details")
-        tk.Radiobutton(self, text="Task Details", variable=self.file_type, value="Task Details", command=self.update_file_selection).grid(row=5, column=1, padx=2, pady=5, sticky='w')
-        tk.Radiobutton(self, text="SS Documents", variable=self.file_type, value="SS Documents", command=self.update_file_selection).grid(row=5, column=1, padx=(100,0), pady=5, sticky='w')
-                
          # Text area to display all selected files
         self.input_details_entry = tk.Text(self, height=5, width=40)
-        self.input_details_entry.grid(row=6, column=1, padx=10, pady=5)
-        tk.Button(self, text="Browse", command=lambda e=self.input_details_entry: self.browse_file(e, self.file_type.get()), width=10).grid(row=6, column=2, padx=10, pady=(0,60))
+        self.input_details_entry.grid(row=5, column=1, padx=10, pady=5)
+        tk.Button(self, text="Browse", command=lambda e=self.input_details_entry, l="SS Documents": self.browse_file(e, l), width=10).grid(row=5, column=2, padx=10, pady=5)
         
         # Template download link
-        text_widget = tk.Text(self, height=1, width=40, font=("Helvetica", 8), bd=0, bg=self.cget("bg"))
-        text_widget.grid(row=7, column=1, padx=10, sticky='w')
-        text_widget.insert(tk.END, "Download template here: Task_details.xlsx")
-        text_widget.tag_add("link", "1.23", "1.end")
-        text_widget.tag_config("link", foreground="blue", underline=True)
-        text_widget.tag_bind("link", "<Button-1>", lambda e, url="https://fujitsu.sharepoint.com/:x:/r/teams/Asia-42f6e454-ChatAIContestAPG/Shared%20Documents/ChatAI%20Contest%20APG/Deliverable/Sprint%202/Task%20Details%20Sample.xlsx?d=w4ffbd7b446c146539859793651360c36&csf=1&web=1&e=jUauGt": self.open_url(url))
+        # text_widget = tk.Text(self, height=1, width=40, font=("Helvetica", 8), bd=0, bg=self.cget("bg"))
+        # text_widget.grid(row=7, column=1, padx=10, sticky='w')
+        # text_widget.insert(tk.END, "Download template here: Task_details.xlsx")
+        # text_widget.tag_add("link", "1.23", "1.end")
+        # text_widget.tag_config("link", foreground="blue", underline=True)
+        # text_widget.tag_bind("link", "<Button-1>", lambda e, url="https://fujitsu.sharepoint.com/:x:/r/teams/Asia-42f6e454-ChatAIContestAPG/Shared%20Documents/ChatAI%20Contest%20APG/Deliverable/Sprint%202/Task%20Details%20Sample.xlsx?d=w4ffbd7b446c146539859793651360c36&csf=1&web=1&e=jUauGt": self.open_url(url))
 
         # Start and End date picker
         tk.Label(self, text="Project Duration").grid(row=9, column=0, padx=10, pady=10, sticky='w')
@@ -147,12 +144,12 @@ class Application(tk.Frame):
     def browse_file(self, entry, label): 
         # if the process is repeated - clear the list first
         self.ss_folder_file.clear()
-        selected_file_type = self.file_type.get()
+        #selected_file_type = self.file_type.get()
         file_types = [("Excel files", "*.xlsx *.xls")]
         try:
             entry.config(state=tk.NORMAL)
             entry.delete(1.0, tk.END)
-            if label == "Members skill set" or selected_file_type == "Task Details":
+            if label == "Members skill set":
                 file_path = filedialog.askopenfilename(filetypes=file_types)
                 if file_path:
                     if label == "Members skill set":
@@ -177,7 +174,7 @@ class Application(tk.Frame):
                             if file.endswith('.xlsx') or file.endswith('.xls'):
                                 folder_file_paths.append(os.path.join(root, file))
 
-                    if len(folder_file_paths) > 5:
+                    if len(folder_file_paths) > 10:
                         messagebox.showerror("Error", config.error_message["ManyExcelError"])
                         self.ss_folder_file.clear()  # Clear the list to prevent further processing
                         return
@@ -205,6 +202,7 @@ class Application(tk.Frame):
         # if repeat the process, clear the result section first
         self.remove_result_section()
         
+
         self.api_key = self.validate_api_key(self.api_key_entry.get())
         if not self.api_key:
             return False
@@ -217,24 +215,14 @@ class Application(tk.Frame):
         self.skill_set_data = self.read_file(self.skillset_file, 3, None)
         if self.skill_set_data is None:
             return  # Stop the process if the file is not found or an error occurred
+        
+        # read and return list of task
+        tasks_json = self.read_ss_folder_files()
 
-        # If the file type is Task Details, read the file
-        if self.file_type.get() == "Task Details":
-            # Read task details data
-            # if self.compare_excel(self.task_details_file, 'Task Details Sample.xlsx') == False:
-            #     return
-            self.task_details_data = self.read_file(self.task_details_file, 1, "B:E")
-            if self.task_details_data is None:
-                return
-        else:
-            self.read_ss_folder_files()
-            self.request_task_details()
+        # send first request to get complexity and priority
+        self.request_task_details(tasks_json)
 
-        # print(f"Result in main :")
-        # print(self.screen_layout_json)
-        # print('---------------------------------------------------------')
-        # print(self.app_detailed_spec_data_converted_json)
-
+        # send second request to get wbs details
         self.send_data_to_chatai()
     
     def compare_excel(self, file, template_file): 
@@ -312,6 +300,7 @@ class Application(tk.Frame):
 
     def read_ss_folder_files(self):
         self.selected_folder_file = []
+        self.task_list.clear()
         
         # Variables to store file paths based on keywords
         application_detailed_specification_files = []
@@ -319,13 +308,17 @@ class Application(tk.Frame):
         screen_layout_files = []
         
         for file_path in self.ss_folder_file:
+
             if "Application Detailed Specification" in file_path:
                 application_detailed_specification_files.append(file_path)
+                
             elif "Event Process Sequence Diagram History" in file_path:
-                 event_process_diagram_history_files.append(file_path)
+                event_process_diagram_history_files.append(file_path)
+
             elif "Screen Layout" in file_path:
                 screen_layout_files.append(file_path)
-        
+                # Define the regular expression pattern to match the desired part
+                
         # Print the results
         print("\nScreen Layout Files:")
         for file in screen_layout_files:
@@ -340,15 +333,24 @@ class Application(tk.Frame):
             # print(file)
             # call function read application detailed specification files
             app_detailed_spec_data = self.read_application_detailed_specification_files(file)
-            self.app_detailed_spec_data_converted_json = self.convert_app_detailed_spec_data(app_detailed_spec_data)
+            self.app_detailed_spec_data_converted_json = self.convert_app_detailed_spec_data(app_detailed_spec_data, file)
             print(self.app_detailed_spec_data_converted_json)
 
-        print("\nEvent Process Sequence Diagram History Files:")
-        for file in event_process_diagram_history_files:
-            # call function read event process sequence diagram history files
-            self.flowchart_image_path = self.event_Process_Sequence_Diagram_History_Files(file)
-            # print(flowchart_image)
-        
+        # print("\nEvent Process Sequence Diagram History Files:")
+        # for file in event_process_diagram_history_files:
+        #     # call function read event process sequence diagram history files
+        #     self.flowchart_image_path = self.event_Process_Sequence_Diagram_History_Files(file)
+        #     # print(flowchart_image)
+
+        # create a list of tasks into json
+        json_list = []
+        json_list = [{'Item No': i + 1, 'Task name': task} for i, task in enumerate(self.task_list)]
+        # Convert to JSON string
+        json_string = json.dumps(json_list, indent=4)
+
+        print(json_string)
+        return json_string
+
     def read_screen_layout(self, file, sheetName, keywordsHeader):
         try:
             workbook = load_workbook(filename=file)
@@ -377,15 +379,33 @@ class Application(tk.Frame):
                 if start_found:
                     if filtered_row != [] and '画面項目名\n/Screen Item Name' not in filtered_row:
                         screen_layout_data.append(filtered_row)
+            
+            screen_name = ""
+            match = re.search(r"\\([^_]+)_", file)
+            if match:
+                    extracted_part = match.group(1)
+            
+            # Check if there is '\\' inside the string and count occurrences
+            backslash_count = extracted_part.count('\\')
+
+            # Loop to extract the part after the last backslash if there are multiple backslashes
+            if backslash_count > 0:
+                parts = extracted_part.split('\\')
+                screen_name = parts[-1] + "_UI"
+            else:
+                screen_name = extracted_part + "_UI"
+
+            # creating the list of tasks
+            self.task_list.append(screen_name)
 
             # Initialize the JSON structure
             screen_layout_json = {
-                "Screen Layout": [],
+                screen_name: [],
             }
     
             for row in screen_layout_data:
                 if len(row) > 1 and (row[1] != '-' or row[2] != '-'):
-                    screen_layout_json["Screen Layout"].append({
+                    screen_layout_json[screen_name].append({
                         "Screen Item Name": row[1],
                         "Type": row[2],
                     })
@@ -422,7 +442,7 @@ class Application(tk.Frame):
 
             # Define the start and end keywords
             end_keyword = ['メンバ定義\n/Member Definition','メンバ名\n/Member Name']
-            start_keywords = ['説明\n/Description', '引数\n/Argument', '戻り値\n/Return Value', 'テーブル/ファイル\n/Table/File']
+            start_keywords = ['業務分割名\n/Business Division Name','説明\n/Description', '引数\n/Argument', '戻り値\n/Return Value', 'テーブル/ファイル\n/Table/File']
             start_found = False     # Initialize flags
 
             # Iterate through rows and print rows between the keywords
@@ -452,98 +472,98 @@ class Application(tk.Frame):
             messagebox.showerror("Error", f"Failed to read Excel file: {e}")
             return None
     
-    def event_Process_Sequence_Diagram_History_Files(self, file_path):
-        try:
-            sheet_names = [] # Initialize an empty list for sheet names
-            workbook = load_workbook(file_path, data_only=True)
+    # def event_Process_Sequence_Diagram_History_Files(self, file_path):
+    #     try:
+    #         sheet_names = [] # Initialize an empty list for sheet names
+    #         workbook = load_workbook(file_path, data_only=True)
 
-            # Iterate through each worksheet in the workbook
-            for sheet in workbook.worksheets:
-                sheet_names.append(sheet.title)
-                print(sheet.title)
+    #         # Iterate through each worksheet in the workbook
+    #         for sheet in workbook.worksheets:
+    #             sheet_names.append(sheet.title)
+    #             print(sheet.title)
 
-            # # Check if the file is an Application Detailed Specification file
-            self.check_file_validity(sheet_names, workbook, file_path)
+    #         # # Check if the file is an Application Detailed Specification file
+    #         self.check_file_validity(sheet_names, workbook, file_path)
             
-            sheet = workbook[sheet_names[2]] # Select the third sheet
+    #         sheet = workbook[sheet_names[2]] # Select the third sheet
 
-            # Extract images from the Excel file
-            images = []
-            for idx, image in enumerate(sheet._images):
-                # Convert the openpyxl image to a PIL image
-                image_stream = io.BytesIO(image._data())
-                img = Image.open(image_stream)
-                images.append(img)
+    #         # Extract images from the Excel file
+    #         images = []
+    #         for idx, image in enumerate(sheet._images):
+    #             # Convert the openpyxl image to a PIL image
+    #             image_stream = io.BytesIO(image._data())
+    #             img = Image.open(image_stream)
+    #             images.append(img)
                 
-                # Save the image to a file
-                img.save(f'image_{idx + 1}.png')
+    #             # Save the image to a file
+    #             img.save(f'image_{idx + 1}.png')
 
-            image_path = "image_1.png"
-            #description = self.describe_image(image_path)
-            # Delete the file
-            # os.remove(image_path)
-            return image_path
-            # print(description)
+    #         image_path = "image_1.png"
+    #         #description = self.describe_image(image_path)
+    #         # Delete the file
+    #         # os.remove(image_path)
+    #         return image_path
+    #         # print(description)
 
-        except FileNotFoundError:
-            messagebox.showerror("Error", config.error_message["FileNotFoundError"])
-            return None
-        except pd.errors.EmptyDataError:
-            messagebox.showerror("Error", config.error_message["EmptyDataError"])
-            return None
-        except pd.errors.ParserError:
-            messagebox.showerror("Error", config.error_message["ParserError"])
-            return None
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to read Excel file: {e}")
-            return None
+    #     except FileNotFoundError:
+    #         messagebox.showerror("Error", config.error_message["FileNotFoundError"])
+    #         return None
+    #     except pd.errors.EmptyDataError:
+    #         messagebox.showerror("Error", config.error_message["EmptyDataError"])
+    #         return None
+    #     except pd.errors.ParserError:
+    #         messagebox.showerror("Error", config.error_message["ParserError"])
+    #         return None
+    #     except Exception as e:
+    #         messagebox.showerror("Error", f"Failed to read Excel file: {e}")
+    #         return None
 
-    def describe_image(self, img):
-        encoded_image = self.encode_image(img)
+    # def describe_image(self, img):
+    #     encoded_image = self.encode_image(img)
     
-        headers = {
-            "Content-type": "application/json",
-            "api-key": self.api_key
-        }
+    #     headers = {
+    #         "Content-type": "application/json",
+    #         "api-key": self.api_key
+    #     }
     
-        # data = {
-        #     "messages": [
-        #         {"role": "user", "content": [
-        #             {"type": "text", "text": "Please describe the image below."},
-        #             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
-        #         ]}
-        #     ]
-        # }
+    #     # data = {
+    #     #     "messages": [
+    #     #         {"role": "user", "content": [
+    #     #             {"type": "text", "text": "Please describe the image below."},
+    #     #             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
+    #     #         ]}
+    #     #     ]
+    #     # }
 
-        data = {
-            "contents": [
-                {
-                    "role": "user",
-                    "parts": [
-                        {
-                            "inlineData": {
-                                "mimeType": "image/jpeg",
-                                "data": encoded_image
-                            }
-                        },
-                        {
-                            "text": "What is shown this image?"
-                        }
-                    ]
-                }
-            ]
-        }
+    #     data = {
+    #         "contents": [
+    #             {
+    #                 "role": "user",
+    #                 "parts": [
+    #                     {
+    #                         "inlineData": {
+    #                             "mimeType": "image/jpeg",
+    #                             "data": encoded_image
+    #                         }
+    #                     },
+    #                     {
+    #                         "text": "What is shown this image?"
+    #                     }
+    #                 ]
+    #             }
+    #         ]
+    #     }
     
-        # response = requests.post("https://ai-foundation-api.app/ai-foundation/chat-ai/gpt4", headers=headers, json=data)
-        response = requests.post("https://api.ai-service.global.fujitsu.com/ai-foundation/chat-ai/gemini/pro:generateContent", headers=headers, json=data)
-        response_json = response.json()
-        # print(response_json)
-        # return response_json["choices"][0]["message"]["content"]
-        return response_json['candidates'][0]['content']['parts'][0]['text']
+    #     # response = requests.post("https://ai-foundation-api.app/ai-foundation/chat-ai/gpt4", headers=headers, json=data)
+    #     response = requests.post("https://api.ai-service.global.fujitsu.com/ai-foundation/chat-ai/gemini/pro:generateContent", headers=headers, json=data)
+    #     response_json = response.json()
+    #     # print(response_json)
+    #     # return response_json["choices"][0]["message"]["content"]
+    #     return response_json['candidates'][0]['content']['parts'][0]['text']
 
-    def encode_image(self,img):
-        with open(img, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode('utf-8')
+    # def encode_image(self,img):
+    #     with open(img, "rb") as image_file:
+    #         return base64.b64encode(image_file.read()).decode('utf-8')
     
     def check_file_validity(self, sheet_names, workbook, file_path):
         file_size = os.path.getsize(file_path)
@@ -568,60 +588,93 @@ class Application(tk.Frame):
                     else:
                         return True
         
-    def convert_app_detailed_spec_data(self, app_detailed_spec_data):
+    def convert_app_detailed_spec_data(self, app_detailed_spec_data, file_path):
         is_description = False
         is_argument = False
         is_return_value = False
         is_table_file = False
+        business_division_name = ""
         description = []
         argument = []
         return_value = []
         table_file = []
-        keywords = ['説明\n/Description', '引数\n/Argument', '戻り値\n/Return Value', 'テーブル/ファイル\n/Table/File']
+        keywords = ['業務分割名\n/Business Division Name', '説明\n/Description', '引数\n/Argument', '戻り値\n/Return Value', 'テーブル/ファイル\n/Table/File']
 
         for row in app_detailed_spec_data:
-            if (keywords[0] in row and '名称\n/Name' not in row) or is_description:
-                # Extract the description
+            if keywords[0] in row:
                 is_table_file = False
                 if keywords[1] not in row:
+                    if len(row) == 2:
+                        business_division_name = row[1]
+
+            if (keywords[1] in row and '名称\n/Name' not in row) or is_description:
+                # Extract the description
+                is_table_file = False
+                if keywords[2] not in row:
                     is_description = True
                     if len(row) == 2:
                         description.append(row[1])
                     elif len(row) == 1 and row[0] != '説明\n/Description':
                         description.append(row[0])
 
-            if keywords[1] in row or is_argument:
+            if keywords[2] in row or is_argument:
                 # Extract the argument
-                if keywords[2] not in row:
+                if keywords[3] not in row:
                     is_description = False
                     is_argument = True
                     if len(row) == 4:
                         if '名称\n/Name' not in row:
                             argument.append(row)
 
-            if keywords[2] in row or is_return_value:
+            if keywords[3] in row or is_return_value:
                 # Extract the return value
-                if keywords[3] not in row:
+                if keywords[4] not in row:
                     is_argument = False
                     is_return_value = True
                     if len(row) == 4:
                         if '名称\n/Name' not in row:
                             return_value.append(row)
                 
-            if keywords[3] in row or is_table_file:
+            if keywords[4] in row or is_table_file:
                 # Extract the table/file
                 is_return_value = False
                 is_table_file = True
                 if len(row) == 7:
                     table_file.append(row)
         
+        # Define the regular expression pattern to match the desired part
+        function_name = ""
+        # Use re.search to find the match
+        #print(file_path)
+        match = re.search(r"\\([^_]+)_", file_path)
+        if match:
+                extracted_part = match.group(1)
+        
+        # Check if there is '\\' inside the string and count occurrences
+        backslash_count = extracted_part.count('\\')
+
+        # Loop to extract the part after the last backslash if there are multiple backslashes
+        if backslash_count > 0:
+            parts = extracted_part.split('\\')
+            function_name = parts[-1] + "_" + business_division_name
+        else:
+            function_name = extracted_part + "_" + business_division_name
+                
+            # print(f"Extracted part: {function_name}")
+        
+        # creating the list of tasks
+        self.task_list.append(function_name)
+
         # Initialize the JSON structure
         app_detailed_spec_json = {
+            "Business Division Name": [],
             "Description": [],
             "Argument": [],
             "Return_value": [],
             "Table or File use": []
         }
+
+        app_detailed_spec_json["Business Division Name"].append(function_name)
 
         for row in description:
             if len(row) > 1:
@@ -658,7 +711,7 @@ class Application(tk.Frame):
                 })
         
         # Convert to JSON string for readability
-        json_string = json.dumps(app_detailed_spec_json, indent=4, ensure_ascii=False)
+        json_string = json.dumps(app_detailed_spec_json, indent=5, ensure_ascii=False)
         # print(json_string)
         return json_string
 
@@ -670,18 +723,18 @@ class Application(tk.Frame):
             self.progress["value"] = 0  # Reset to 0 once it reaches 100
         self.master.after(100, self.process_step)  # Update every 100 milliseconds
     
-    def request_task_details(self):
+    def request_task_details(self, tasks_list_json):
         try:
             # Call the method to create the status section
             self.create_result_section()
 
             self.progress["value"] = 0
-            self.status_label.config(text="Sending request to get task details data...")
+            self.status_label.config(text="Sending request to get task complexity...")
 
             # Simulate sending data to ChatAI
             self.master.after(100, self.process_step)
 
-            encoded_image = self.encode_image(self.flowchart_image_path)
+            # encoded_image = self.encode_image(self.flowchart_image_path)
     
             headers = {
                 "Content-type": "application/json",
@@ -689,7 +742,8 @@ class Application(tk.Frame):
             }
             prompt = config.prompt_list_task.format(
                             screen_layout_json=self.screen_layout_json,
-                            app_detailed_spec_data_converted_json=self.app_detailed_spec_data_converted_json
+                            app_detailed_spec_data_converted_json=self.app_detailed_spec_data_converted_json,
+                            tasks_list_json=tasks_list_json
                         )
             api_endpoint = "https://api.ai-service.global.fujitsu.com/ai-foundation/chat-ai/gemini/pro:generateContent" 
 
@@ -698,12 +752,12 @@ class Application(tk.Frame):
                     {
                         "role": "user",
                         "parts": [
-                            {
-                                "inlineData": {
-                                    "mimeType": "image/jpeg",
-                                    "data": encoded_image
-                                }
-                            },
+                            # {
+                            #     "inlineData": {
+                            #         "mimeType": "image/jpeg",
+                            #         "data": encoded_image
+                            #     }
+                            # },
                             {
                                 "text": prompt
                             }
@@ -715,7 +769,7 @@ class Application(tk.Frame):
             # Send the POST request
             response = requests.post(api_endpoint, headers=headers, json=data)
             response.raise_for_status()  # Raise an exception for HTTP errors
-            os.remove(self.flowchart_image_path)
+            # os.remove(self.flowchart_image_path)
            
             # Check the response
             try:
@@ -724,7 +778,7 @@ class Application(tk.Frame):
                 # Extract the content (only the wbs result)
                 content = analysis_result['candidates'][0]['content']['parts'][0]['text']
                 self.task_details_response = content
-                print("Response from chat AI for the Task Details")
+                print("Response from chat AI for the Tasks Complexity and Priority")
                 print(content)
  
             except json.JSONDecodeError:
@@ -745,16 +799,13 @@ class Application(tk.Frame):
         finally:
             # self.status_label.config(text="Process Task Details has completed successfully. Creating WBS is in progress.")
             self.progress["value"] = 100
+
     # Send data for wbs - request 2
     def send_data_to_chatai(self):
         try:   
+            task_details_data=self.task_details_response
 
-            if self.file_type.get() == "Task Details":
-                self.create_result_section()
-                task_details_data=self.task_details_data.to_json()
-            else:
-                task_details_data=self.task_details_response
-
+            # for progress bar
             self.progress["value"] = 0
             self.status_label.config(text="Process Task Details has completed successfully. Sending request to get the WBS details...")
 
@@ -773,7 +824,6 @@ class Application(tk.Frame):
                             progress="To do",
                             plan_start_date="Start date Example",
                             plan_end_date="End date Example",
-                            remarks="Remarks for whole WBS Example",
                         )
 
             headers = {
@@ -805,19 +855,7 @@ class Application(tk.Frame):
 
                 # Extract the content (only the wbs result)
                 content = analysis_result['candidates'][0]['content']['parts'][0]['text']
-                remark_column = re.compile(r"\*\*Remarks:\*\*(.*)", re.DOTALL)
-                match = remark_column.search(content)
-                if match:
-                    remarks = match.group(1).strip()
-                    print("Extracted Remarks:")
-                    #print(remarks)
-                else:
-                    remarks = (
-                        "Please review the entire WBS to ensure that all tasks are assigned correctly based on complexity and skillset. "
-                        "Make any necessary adjustments to improve the efficiency and effectiveness of the project plan."
-                    )
-                    #print("Remarks section not found.")
-                self.create_wbs(content, self.start_date_entry, remarks)
+                self.create_wbs(content, self.start_date_entry)
                 print(content)
 
             except json.JSONDecodeError:
@@ -877,7 +915,7 @@ class Application(tk.Frame):
             messagebox.showerror("Error", config.error_message["InvalidKeyError"])
             return None
         
-    def create_wbs(self, content, start_date, remarks):
+    def create_wbs(self, content, start_date):
         # Extract the date value
         start_date_value = start_date.get_date()
 
@@ -915,7 +953,6 @@ class Application(tk.Frame):
         # Set current_date to the current date
         current_date = datetime.now().date()
         ws['G2'] = current_date
-        ws['B3'] = remarks
 
          # Write the DataFrame to the Excel template starting at row 9
         start_row = 9
