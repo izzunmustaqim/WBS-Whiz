@@ -3,18 +3,16 @@ prompt_list_task = (
                         "{screen_layout_json}"
                         "{app_detailed_spec_data_converted_json}"
                         "{tasks_list_json}"
- 
+
                         "#INSTRUCTIONS"
-                        "As a project manager, determine the complexity and priority for each of the list of task."
-                        "The inputs are the screen layout details and Application Detailed Specification Files which is used to determine the complexity and priority from the given list of tasks."
-                        # "Given the image flowchart for reference of the whole structure of the flow for the application"
-                        "Please sort the task to which should be done first accordingly."
+                        "As a project manager, determine the complexity for each of the list of task."
+                        "The inputs are the screen layout details and Application Detailed Specification Files which is used to determine the complexity from the given list of tasks."
                         "The list of tasks should follow exactly as the given input."
                         "Please provide the information in table format only as stated below"
                         "It should consist only of the following:"
-                        "No       |   Task Description          |    Complexity             | Priority"
-                        "1.       |     Task 1                  |    hard/mediuam/easy      | High/Medium/Low"
-                        "2.       |     Task 2                  |    hard/medium/easy       | High/Medium/Low"
+                        "No       |   Task Description          |    Complexity"
+                        "1.       |     Task 1                  |    Hard/Mediuam/Easy"
+                        "2.       |     Task 2                  |    Hard/Mediuam/Easy"
                     )
 
 prompt = (
