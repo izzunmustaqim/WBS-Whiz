@@ -780,6 +780,23 @@ class Application(tk.Frame):
                 self.task_details_response = content
                 print("Response from chat AI for the Tasks Complexity and Priority")
                 print(content)
+                
+                # Extract the markdown table using regular expression
+                table_pattern = re.compile(r'\|.*\|')
+                markdown_table = '\n'.join(table_pattern.findall(content))
+                
+                # Convert the Markdown table to a DataFrame
+                data = io.StringIO(markdown_table)
+                task_df = pd.read_csv(data, sep="|", skipinitialspace=True, engine='python')
+
+                # Remove the first row
+                task_df = task_df.iloc[1:]
+
+                # Drop the first and last columns which are empty due to the table format
+                self.task_df = task_df.drop(task_df.columns[[0, -1]], axis=1)
+                
+                print(task_df)
+                # print(task_df.to_json())
  
             except json.JSONDecodeError:
                 print("Error: The response is not in JSON format.")
@@ -802,8 +819,16 @@ class Application(tk.Frame):
 
     # Send data for wbs - request 2
     def send_data_to_chatai(self):
+        start_date_str=self.start_date_entry.get_date()
+        end_date_str=self.end_date_entry.get_date()
+        # print('start_date_str')
+        # print(start_date_str)
+        start_date = start_date_str.strftime('%m/%d/%Y')
+        end_date = end_date_str.strftime('%m/%d/%Y')
+        # print(start_date)
         try:   
             task_details_data=self.task_details_response
+            # task_details_data=self.task_df.to_json()
 
             # for progress bar
             self.progress["value"] = 0
@@ -815,10 +840,11 @@ class Application(tk.Frame):
             # Define the API endpoint and hardcoded prompt
             api_endpoint = "https://api.ai-service.global.fujitsu.com/ai-foundation/chat-ai/gemini/pro:generateContent" 
             prompt = config.prompt.format(
-                            task_details_data=task_details_data,
+                            # task_details_data=task_details_data,
+                            task_details_data=self.task_df.to_json(),
                             skill_set_data=self.skill_set_data.to_json(),
-                            start_date_str=self.start_date_entry.get_date(),
-                            end_date_str=self.end_date_entry.get_date(),
+                            start_date_str=start_date,
+                            end_date_str=end_date,
                             task_description="Task Description Example",  # Provide example values for placeholders
                             assigned_to="Assigned to Example",
                             progress="To do",
@@ -933,36 +959,47 @@ class Application(tk.Frame):
         # Drop the first and last columns which are empty due to the table format
         df = df.drop(df.columns[[0, -1]], axis=1)
 
-        # Convert to datetime and change format
-        df.iloc[:, 4] = pd.to_datetime(df.iloc[:, 4]).dt.strftime('%m/%d/%Y')
-        df.iloc[:, 5] = pd.to_datetime(df.iloc[:, 5]).dt.strftime('%m/%d/%Y')
+        # # Convert to datetime and change format
+        # df.iloc[:, 4] = pd.to_datetime(df.iloc[:, 4]).dt.strftime('%m/%d/%Y')
+        # df.iloc[:, 5] = pd.to_datetime(df.iloc[:, 5]).dt.strftime('%m/%d/%Y')
 
         # remove the header from an existing Pandas DataFrame
         df = df.rename(columns=df.iloc[0]).drop(df.index[0])
         print(df)
 
-        # Load the Excel template
-        template_path = 'JDU-WBS_Template_Samples.xlsx'
-        wb = openpyxl.load_workbook(template_path)
-        ws = wb.active  # or specify the sheet name with wb['SheetName']
+        try:
+            # Load the Excel template
+            template_path = 'JDU-WBS_Template_Samples.xlsx'
+            wb = openpyxl.load_workbook(template_path)
+            ws = wb.active  # or specify the sheet name with wb['SheetName']
 
-        # Write the variable into cell
-        ws['B2'] = "Details_WBS.xlsx"
-        # Format the date as a string
-        ws['B6'] = start_date_value.strftime('%m/%d/%Y')
-        # Set current_date to the current date
-        current_date = datetime.now().date()
-        ws['G2'] = current_date
+            # Write the variable into cell
+            ws['B2'] = "Details_WBS.xlsx"
+            # Format the date as a string
+            ws['B6'] = start_date_value.strftime('%m/%d/%Y')
+            # Set current_date to the current date
+            current_date = datetime.now().date()
+            ws['G2'] = current_date
 
-         # Write the DataFrame to the Excel template starting at row 9
-        start_row = 9
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=True), start_row):
-            for c_idx, value in enumerate(row, 1):
-                ws.cell(row=r_idx, column=c_idx, value=value)
+            # Write the DataFrame to the Excel template starting at row 9
+            start_row = 9
+            for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=True), start_row):
+                for c_idx, value in enumerate(row, 1):
+                    ws.cell(row=r_idx, column=c_idx, value=value)
 
-        # Save the modified template as a new file
-        output_path = 'Details_WBS.xlsx'
-        wb.save(output_path)
+            # Save the modified template as a new file
+            output_path = 'Details_WBS.xlsx'
+            wb.save(output_path)
+            
+        except FileNotFoundError:
+            messagebox.showerror("Error", config.error_message["FileNotFoundError"])
+            return None
+        except PermissionError as e:
+            messagebox.showerror("Error", f"Error: Permission denied. {e}")
+            return None
+        except Exception as e:
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
+            return None
 
         print(f"DataFrame saved to {output_path}")
 
