@@ -22,6 +22,7 @@ prompt = (
 
             "As a project manager, create a WBS for the project. The input are the task details and the skill set of the team members."
             "Please give in table format where each of the title should be the header."
+            "Please ensure you accurately record each members full name."
             "In the start of the project, make sure everyone is start at the same date despite the complexity of the task and seniority level."
             "Ensure that everyone starts their next task only after completing the previous one."
             # "Ensure the start date of the next task is after the end date of the previous task."
