@@ -22,6 +22,7 @@ prompt = (
 
             "As a project manager, create a WBS for the project. The input are the task details and the skill set of the team members."
             "Please give in table format where each of the title should be the header."
+            "Please ensure you accurately record each members full name."
             "In the start of the project, make sure everyone is start at the same date despite the complexity of the task and seniority level."
             "The order for task assignment based on complexity should be following the follow:"
             "Hard complexity task: Senior developer -> Middle developer (only if senior developer not available) -> Junior developer (only if senior and middle developr not available)"
