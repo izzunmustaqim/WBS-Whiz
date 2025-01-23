@@ -5,7 +5,6 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 from tkcalendar import DateEntry
-import pandas as pd
 import requests  # Import pandas
 import pandas as pd  # Import pandas
 import config   # Import the config file
@@ -176,7 +175,7 @@ class Application(tk.Frame):
                             if file.endswith('.xlsx') or file.endswith('.xls'):
                                 folder_file_paths.append(os.path.join(root, file))
 
-                    if len(folder_file_paths) > 10:
+                    if len(folder_file_paths) > 20:
                         messagebox.showerror("Error", config.error_message["ManyExcelError"])
                         self.ss_folder_file.clear()  # Clear the list to prevent further processing
                         return
@@ -336,7 +335,7 @@ class Application(tk.Frame):
             # call function read application detailed specification files
             app_detailed_spec_data = self.read_application_detailed_specification_files(file)
             self.app_detailed_spec_data_converted_json = self.convert_app_detailed_spec_data(app_detailed_spec_data, file)
-            print(self.app_detailed_spec_data_converted_json)
+            #print(self.app_detailed_spec_data_converted_json)
 
         # print("\nEvent Process Sequence Diagram History Files:")
         # for file in event_process_diagram_history_files:
@@ -443,8 +442,8 @@ class Application(tk.Frame):
             application_detailed_spec_data = []
 
             # Define the start and end keywords
-            end_keyword = ['メンバ定義\n/Member Definition','メンバ名\n/Member Name']
-            start_keywords = ['業務分割名\n/Business Division Name','説明\n/Description', '引数\n/Argument', '戻り値\n/Return Value', 'テーブル/ファイル\n/Table/File']
+            end_keyword = ['メンバ定義\n/Member Definition','メンバ名\n/Member Name', 'アクセスレベル\n/Access Level']
+            start_keywords = ['業務分割名\n/Business Division Name','処理名\n/Process Name','説明\n/Description', '引数\n/Argument', '戻り値\n/Return Value', 'テーブル/ファイル\n/Table/File']
             start_found = False     # Initialize flags
 
             # Iterate through rows and print rows between the keywords
@@ -457,8 +456,9 @@ class Application(tk.Frame):
                     start_found = False
                 if start_found:
                     if filtered_row != []:
-                        # print(filtered_row)
+                        #print(filtered_row)
                         application_detailed_spec_data.append(filtered_row)
+            #print(application_detailed_spec_data)
             return application_detailed_spec_data
         
         except FileNotFoundError:
@@ -592,129 +592,149 @@ class Application(tk.Frame):
         
     def convert_app_detailed_spec_data(self, app_detailed_spec_data, file_path):
         is_description = False
+        is_new_method = False
+        is_inner_description = False
+        is_process_name = False
         is_argument = False
         is_return_value = False
         is_table_file = False
         business_division_name = ""
-        description = []
-        argument = []
-        return_value = []
-        table_file = []
-        keywords = ['業務分割名\n/Business Division Name', '説明\n/Description', '引数\n/Argument', '戻り値\n/Return Value', 'テーブル/ファイル\n/Table/File']
-
-        for row in app_detailed_spec_data:
-            if keywords[0] in row:
-                is_table_file = False
-                if keywords[1] not in row:
-                    if len(row) == 2:
-                        business_division_name = row[1]
-
-            if (keywords[1] in row and '名称\n/Name' not in row) or is_description:
-                # Extract the description
-                is_table_file = False
-                if keywords[2] not in row:
-                    is_description = True
-                    if len(row) == 2:
-                        description.append(row[1])
-                    elif len(row) == 1 and row[0] != '説明\n/Description':
-                        description.append(row[0])
-
-            if keywords[2] in row or is_argument:
-                # Extract the argument
-                if keywords[3] not in row:
-                    is_description = False
-                    is_argument = True
-                    if len(row) == 4:
-                        if '名称\n/Name' not in row:
-                            argument.append(row)
-
-            if keywords[3] in row or is_return_value:
-                # Extract the return value
-                if keywords[4] not in row:
-                    is_argument = False
-                    is_return_value = True
-                    if len(row) == 4:
-                        if '名称\n/Name' not in row:
-                            return_value.append(row)
-                
-            if keywords[4] in row or is_table_file:
-                # Extract the table/file
-                is_return_value = False
-                is_table_file = True
-                if len(row) == 7:
-                    table_file.append(row)
-        
-        # Define the regular expression pattern to match the desired part
-        function_name = ""
-        # Use re.search to find the match
-        #print(file_path)
-        match = re.search(r"\\([^_]+)_", file_path)
-        if match:
-                extracted_part = match.group(1)
-        
-        # Check if there is '\\' inside the string and count occurrences
-        backslash_count = extracted_part.count('\\')
-
-        # Loop to extract the part after the last backslash if there are multiple backslashes
-        if backslash_count > 0:
-            parts = extracted_part.split('\\')
-            function_name = parts[-1] + "_" + business_division_name
-        else:
-            function_name = extracted_part + "_" + business_division_name
-                
-            # print(f"Extracted part: {function_name}")
-        
-        # creating the list of tasks
-        self.task_list.append(function_name)
+        counter = -1
+        methods = [{
+            "Process Name": [], 
+            "Argument": [], 
+            "Return Value": [], 
+            "Table or File use": [],
+            "Description": []
+            }]
+        keywords = ['業務分割名\n/Business Division Name', '説明\n/Description', '処理名\n/Process Name', '引数\n/Argument', '戻り値\n/Return Value', 'テーブル/ファイル\n/Table/File']
 
         # Initialize the JSON structure
         app_detailed_spec_json = {
             "Business Division Name": [],
-            "Description": [],
-            "Argument": [],
-            "Return_value": [],
-            "Table or File use": []
+            "Descriptions": [],
+            "Methods": []
         }
 
-        app_detailed_spec_json["Business Division Name"].append(function_name)
+        for row in app_detailed_spec_data:
+            #print(row)
+            if keywords[0] in row:
+                #is_table_file = False
+                if keywords[1] not in row:
+                    if len(row) == 2:
+                        business_division_name = row[1]
+                # Define the regular expression pattern to match the desired part
+                function_name = ""
+                # Use re.search to find the match
+                #print(file_path)
+                match = re.search(r"\\([^_]+)_", file_path)
+                if match:
+                        extracted_part = match.group(1)
+                
+                # Check if there is '\\' inside the string and count occurrences
+                backslash_count = extracted_part.count('\\')
 
-        for row in description:
-            if len(row) > 1:
-                app_detailed_spec_json["Description"].append(row)
+                # Loop to extract the part after the last backslash if there are multiple backslashes
+                if backslash_count > 0:
+                    parts = extracted_part.split('\\')
+                    function_name = parts[-1] + "_" + business_division_name
+                else:
+                    function_name = extracted_part + "_" + business_division_name
+                
+                # creating the list of tasks
+                self.task_list.append(function_name)
+                app_detailed_spec_json["Business Division Name"].append(function_name)
+                
 
-        for row in argument:
-            if len(row) > 1:
-                app_detailed_spec_json["Argument"].append({
-                    "No": row[0],
-                    "Name": row[1],
-                    "Type": row[2],
-                    "Description": row[3]
-                })
-        
-        for row in return_value:
-            if len(row) > 1:
-                app_detailed_spec_json["Return_value"].append({
-                    "No": row[0],
-                    "Name": row[1],
-                    "Type": row[2],
-                    "Description": row[3]
-                })
-        
-        for row in table_file:
-            if len(row) > 1:
-                app_detailed_spec_json["Table or File use"].append({
-                    "No": row[0],
-                    "Table_ID/File_ID": row[1],
-                    "Table_Name/File_Name": row[2],
-                    "CRUD Access for C": row[3],
-                    "CRUD Access for R": row[4],
-                    "CRUD Access for U": row[5],
-                    "CRUD Access for D": row[6]
-                })
-        
+            if (keywords[1] in row and '名称\n/Name' not in row) or is_description:
+                if keywords[2] not in row:
+                    is_description = True
+                    if len(row) == 2:
+                        #description.append(row[1])
+                        app_detailed_spec_json["Descriptions"].append(row[1])
+                    elif len(row) == 1 and row[0] != '説明\n/Description':
+                        #description.append(row[0])
+                        app_detailed_spec_json["Descriptions"].append(row[0])
+                
+
+            if keywords[2] in row or is_new_method:
+                is_description = False
+                is_new_method = True
+
+                if keywords[2] in row or is_process_name:
+                    is_process_name = True
+                    is_inner_description = False
+                    if len(row) == 3:
+                        counter += 1
+                        while len(methods) < counter+1:
+                            methods.append({
+                                "Process Name": [],
+                                "Argument": [],
+                                "Return Value": [],
+                                "Table or File use": [],
+                                "Description": []
+                            })
+                        methods[counter]["Process Name"].append(row[2])
+                
+                if keywords[3] in row or is_argument:
+                    # Extract the argument
+                    is_process_name = False
+                    if keywords[4] not in row:
+                        is_argument = True
+                        if len(row) == 4:
+                            if '名称\n/Name' not in row:
+                                #argument.append(row)
+                                methods[counter]["Argument"].append({
+                                                                            "No": row[0],
+                                                                            "Name": row[1],
+                                                                            "Type": row[2],
+                                                                            "Description": row[3]
+                                                                        })
+
+                if keywords[4] in row or is_return_value:
+                    # Extract the return value
+                    is_argument = False
+                    if keywords[5] not in row:
+                        is_return_value = True
+                        if len(row) == 4:
+                            if '名称\n/Name' not in row:
+                                #return_value.append(row)
+                                methods[counter]["Return Value"].append({
+                                                                                "No": row[0],
+                                                                                "Name": row[1],
+                                                                                "Type": row[2],
+                                                                                "Description": row[3]
+                                                                            })
+
+                if keywords[5] in row or is_table_file:
+                    #print(row)
+                    is_return_value = False
+                    if keywords[1] not in row:
+                        is_table_file = True
+                        if len(row) == 7:
+                            methods[counter]["Table or File use"].append({
+                                                                                "No": row[0],
+                                                                                "Table_ID/File_ID": row[1],
+                                                                                "Table_Name/File_Name": row[2],
+                                                                                "CRUD Access for C": row[3],
+                                                                                "CRUD Access for R": row[4],
+                                                                                "CRUD Access for U": row[5],
+                                                                                "CRUD Access for D": row[6]
+                                                                            })
+                
+                if (keywords[1] in row and '名称\n/Name' not in row) or is_inner_description:
+                    #print(row)
+                    is_table_file = False
+                    is_inner_description = True
+                    if len(row) == 2:
+                        methods[counter]["Description"].append(row[1])
+                
+        for method in methods:
+            app_detailed_spec_json["Methods"].append(method)
+                
         # Convert to JSON string for readability
-        json_string = json.dumps(app_detailed_spec_json, indent=5, ensure_ascii=False)
-        # print(json_string)
+        json_string = json.dumps(app_detailed_spec_json, indent=6, ensure_ascii=False)
+        print(json_string)
         return json_string
 
     def process_step(self):
@@ -754,12 +774,6 @@ class Application(tk.Frame):
                     {
                         "role": "user",
                         "parts": [
-                            # {
-                            #     "inlineData": {
-                            #         "mimeType": "image/jpeg",
-                            #         "data": encoded_image
-                            #     }
-                            # },
                             {
                                 "text": prompt
                             }

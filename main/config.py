@@ -9,10 +9,13 @@ prompt_list_task = (
                         "The inputs are the screen layout details and Application Detailed Specification Files"
                         "Please assess the complexity of each task described in the following file."
                         "The list of tasks should follow exactly as the given input."
+                        #"Please also take high priority on the number of argument for determining the complexity of the task"
+                        "Please also prioritize on the number of argument for determining the complexity of the task"
+                        "Please also take high priority on the number of methods based on the process name for determining the complexity of the task"
                         "It should consist only of the following:"
                         "No       |   Task Description          |    Complexity"
-                        "1.       |     Task 1                  |    Hard/Mediuam/Easy"
-                        "2.       |     Task 2                  |    Hard/Mediuam/Easy"
+                        "1.       |     Task 1                  |    Hard/Medium/Easy"
+                        "2.       |     Task 2                  |    Hard/Medium/Easy"
                     )
 
 prompt = (
