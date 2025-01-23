@@ -774,12 +774,6 @@ class Application(tk.Frame):
                     {
                         "role": "user",
                         "parts": [
-                            # {
-                            #     "inlineData": {
-                            #         "mimeType": "image/jpeg",
-                            #         "data": encoded_image
-                            #     }
-                            # },
                             {
                                 "text": prompt
                             }
