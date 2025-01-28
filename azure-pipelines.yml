@@ -1,0 +1,20 @@
+trigger:
+- master
+- develop
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+- group: polaris-variable
+
+steps:
+- task: SynopsysSecurityScan@1
+  displayName: 'Polaris Scan'
+  inputs:
+    scanType: 'polaris'
+    bridge_polaris_serverUrl: 'https://polaris.synopsys.com'
+    bridge_polaris_accessToken: $(POLARIS_API_TOKEN)
+    bridge_polaris_application_name: '0074356_chatAI-contest-APG'
+    bridge_polaris_project_name: 'ChatAI_contest'
+    bridge_polaris_assessment_types: 'SAST,SCA'
+    bridge_polaris_branch_name: 'main'

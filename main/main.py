@@ -345,7 +345,7 @@ class Application(tk.Frame):
 
         # create a list of tasks into json
         json_list = []
-        json_list = [{'Item No': i + 1, 'Task name': task} for i, task in enumerate(self.task_list)]
+        json_list = [{'Item No': i + 1, 'Task Description': task} for i, task in enumerate(self.task_list)]
         # Convert to JSON string
         json_string = json.dumps(json_list, indent=4)
 
