@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
@@ -37,6 +38,7 @@ class Application(tk.Frame):
         self.flowchart_image_path = None
         self.task_details_response = NotImplemented
         self.task_list = []
+        self.is_file_valid = True
 
     def create_widgets(self):
         # Add a new entry for the API key
@@ -166,6 +168,8 @@ class Application(tk.Frame):
                         self.skillset_file = file_path
                     else:
                         self.task_details_file = file_path
+                else:
+                    messagebox.showerror("Error", "No file is selected.")
 
                 entry.insert(tk.END, file_path)
                 entry.config(state=tk.DISABLED)
@@ -184,7 +188,7 @@ class Application(tk.Frame):
                             if file.endswith('.xlsx') or file.endswith('.xls'):
                                 folder_file_paths.append(os.path.join(root, file))
 
-                    if len(folder_file_paths) > 20:
+                    if len(folder_file_paths) > 50:
                         messagebox.showerror("Error", config.error_message["ManyExcelError"])
                         self.ss_folder_file.clear()  # Clear the list to prevent further processing
                         return
@@ -317,13 +321,16 @@ class Application(tk.Frame):
             return None
 
     def read_ss_folder_files(self):
+        self.is_file_valid = True
         self.selected_folder_file = []
         self.task_list.clear()
+        
         
         # Variables to store file paths based on keywords
         application_detailed_specification_files = []
         event_process_diagram_history_files = []
         screen_layout_files = []
+        
         
         for file_path in self.ss_folder_file:
 
@@ -342,23 +349,57 @@ class Application(tk.Frame):
         for file in screen_layout_files:
             sheetName = "項目定義"
             keywordsHeader = ['画面項目名\n/Screen Item Name', 'タイプ\n/ Type']
-            self.screen_layout_json = self.read_screen_layout(file, sheetName, keywordsHeader)
-            print(f"{self.screen_layout_json}")
-            pass
+
+            # to check file validity
+            workbook = load_workbook(filename=file)
+            sheet_names = [] # Initialize an empty list for sheet names
+
+            # Iterate through each worksheet in the workbook
+            for sheet in workbook.worksheets:
+                sheet_names.append(sheet.title)
+
+            # Check if the file is an screen layout file
+            error_message = self.check_file_validity(sheet_names, workbook, file)
+
+            if self.is_file_valid:
+                self.screen_layout_json = self.read_screen_layout(file, sheetName, keywordsHeader)
+                print(f"{self.screen_layout_json}")
+            
+            else:
+                messagebox.showerror("Error", f"{error_message}")
+                self.browse_file(self.input_details_entry, "SS Documents")
+                self.btn_start["state"] = tk.NORMAL
+                self.btn_skillset["state"] = tk.NORMAL
+                self.btn_ss_documents["state"] = tk.NORMAL
+                sys.exit()
 
         print("Application Detailed Specification Files:")
         for file in application_detailed_specification_files:
             # print(file)
             # call function read application detailed specification files
-            app_detailed_spec_data = self.read_application_detailed_specification_files(file)
-            self.app_detailed_spec_data_converted_json = self.convert_app_detailed_spec_data(app_detailed_spec_data, file)
-            #print(self.app_detailed_spec_data_converted_json)
+            workbook = load_workbook(filename=file_path, data_only=True) # Load the workbook
+            sheet_names = [] # Initialize an empty list for sheet names
 
-        # print("\nEvent Process Sequence Diagram History Files:")
-        # for file in event_process_diagram_history_files:
-        #     # call function read event process sequence diagram history files
-        #     self.flowchart_image_path = self.event_Process_Sequence_Diagram_History_Files(file)
-        #     # print(flowchart_image)
+            # Iterate through each worksheet in the workbook
+            for sheet in workbook.worksheets:
+                sheet_names.append(sheet.title)
+
+            # Check if the file is an Application Detailed Specification file
+            error_message = self.check_file_validity(sheet_names, workbook, file_path)
+
+            if self.is_file_valid:
+                app_detailed_spec_data = self.read_application_detailed_specification_files(file)
+                self.app_detailed_spec_data_converted_json = self.convert_app_detailed_spec_data(app_detailed_spec_data, file)
+                #print(self.app_detailed_spec_data_converted_json)
+            
+            else:
+                messagebox.showerror("Error", f"{error_message}")
+                self.browse_file(self.input_details_entry, "SS Documents")
+                self.btn_start["state"] = tk.NORMAL
+                self.btn_skillset["state"] = tk.NORMAL
+                self.btn_ss_documents["state"] = tk.NORMAL
+                sys.exit()
+                
 
         # create a list of tasks into json
         json_list = []
@@ -379,7 +420,7 @@ class Application(tk.Frame):
                 sheet_names.append(sheet.title)
 
             # Check if the file is an Application Detailed Specification file
-            self.check_file_validity(sheet_names, workbook, file)
+            # self.check_file_validity(sheet_names, workbook, file)
 
             sheet = workbook[sheetName]  
             screen_layout_data = []
@@ -453,7 +494,7 @@ class Application(tk.Frame):
                 sheet_names.append(sheet.title)
 
             # Check if the file is an Application Detailed Specification file
-            self.check_file_validity(sheet_names, workbook, file_path)
+            # self.check_file_validity(sheet_names, workbook, file_path)
             
             sheet = workbook[sheet_names[2]] # Select the third sheet
             application_detailed_spec_data = []
@@ -585,27 +626,54 @@ class Application(tk.Frame):
     #         return base64.b64encode(image_file.read()).decode('utf-8')
     
     def check_file_validity(self, sheet_names, workbook, file_path):
+        error_msg = ""
         file_size = os.path.getsize(file_path)
-        max_mb = 2000000 * 1024 * 1024  # 2M MB in bytes
+        max_mb = 25 * 1024 * 1024  # 25MB in bytes
         if file_size > max_mb:
-            raise ValueError("The file is too large. Please upload a smaller file size")
+            # raise ValueError("The file is too large. Please upload a smaller file size")
+            error_msg = "Error! The file is too large. Please upload a file smaller than 25MB"
+            self.is_file_valid=False
+            return error_msg
             # print(f"File size: {file_size} bytes")
         for sheet_name in sheet_names:
                 sheet_temp = workbook[sheet_name]
                 if sheet_temp.max_row == 1 and sheet_temp.max_column == 1 and sheet_temp.cell(row=1, column=1).value is None:
-                    raise ValueError("The file is empty")
+                    # raise ValueError("The file is empty")
+                    error_msg = "Error! The screen layout files are empty. Please upload the correct file"
+                    # self.browse_file(self.input_details_entry, "SS Documents")
+                    self.is_file_valid=False
+                    return error_msg
                 for row in sheet_temp.iter_rows(values_only=True):
                     filtered_row = [cell for cell in row if cell is not None]
                     if filtered_row == []:
-                        raise ValueError("The file is empty")
+                        error_msg = "Error! The screen layout files are empty. Please upload the correct file and start the process again"
+                        # self.browse_file(self.input_details_entry, "SS Documents")
+                        self.is_file_valid=False
+                        return error_msg
+
                     elif "Screen Layout" in file_path and '画面レイアウト\n/Screen Layout' not in filtered_row:
-                        raise ValueError("The file is not a Screen Layout file")
+                        # raise ValueError("The file is not a Screen Layout file")
+                        error_msg = "Error! The file is not a Screen Layout file. Please upload the correct file and start the process again"
+                        # self.browse_file(self.input_details_entry, "SS Documents")
+                        self.is_file_valid=False
+                        return error_msg
+
                     elif "Application Detailed Specification" in file_path and "アプリケーション詳細仕様\n/Application Detailed Specification" not in filtered_row:
-                        raise ValueError("The file is not an Application Detailed Specification file")
+                        # raise ValueError("The file is not an Application Detailed Specification file")
+                        error_msg = "Error! The file is not an Application Detailed Specification file. Please upload the correct file and start the process again"
+                        # self.browse_file(self.input_details_entry, "SS Documents")
+                        self.is_file_valid=False
+                        return error_msg
+
                     elif "Event Process Sequence Diagram History" in file_path and "イベント処理シーケンス図\n/Event Process Sequence Diagram" not in filtered_row:
-                        raise ValueError("The file is not an Event Process Sequence Diagram History file")
+                        # raise ValueError("The file is not an Event Process Sequence Diagram History file")
+                        error_msg == "Error! The file is not an Event Process Sequence Diagram History file. Please upload the correct file and start the process again"
+                        # self.browse_file(self.input_details_entry, "SS Documents")
+                        self.is_file_valid=False
+                        return error_msg
+
                     else:
-                        return True
+                        return "File is valid"
         
     def convert_app_detailed_spec_data(self, app_detailed_spec_data, file_path):
         is_description = False
@@ -815,18 +883,18 @@ class Application(tk.Frame):
                 print(content)
                 
                 # Extract the markdown table using regular expression
-                table_pattern = re.compile(r'\|.*\|')
-                markdown_table = '\n'.join(table_pattern.findall(content))
+                # table_pattern = re.compile(r'\|.*\|')
+                # markdown_table = '\n'.join(table_pattern.findall(content))
                 
-                # Convert the Markdown table to a DataFrame
-                data = io.StringIO(markdown_table)
-                task_df = pd.read_csv(data, sep="|", skipinitialspace=True, engine='python')
+                # # Convert the Markdown table to a DataFrame
+                # data = io.StringIO(markdown_table)
+                # task_df = pd.read_csv(data, sep="|", skipinitialspace=True, engine='python')
 
                 # Remove the first row
-                self.task_df = task_df.iloc[1:]
+                # self.task_df = task_df.iloc[1:]
 
                 # Drop the first and last columns which are empty due to the table format
-                self.task_df = task_df.drop(task_df.columns[[0, -1]], axis=1)                
+                # self.task_df = task_df.drop(task_df.columns[[0, -1]], axis=1)                
  
             except json.JSONDecodeError:
                 print("Error: The response is not in JSON format.")
@@ -856,7 +924,6 @@ class Application(tk.Frame):
         
         try:   
             task_details_data=self.task_details_response
-
             # for progress bar
             self.progress["value"] = 0
             self.status_label.config(text="Process Task Details has completed successfully. Sending request to get the WBS details...")
@@ -867,8 +934,8 @@ class Application(tk.Frame):
             # Define the API endpoint and hardcoded prompt
             api_endpoint = "https://api.ai-service.global.fujitsu.com/ai-foundation/chat-ai/gemini/pro:generateContent" 
             prompt = config.prompt.format(
-                            # task_details_data=task_details_data,
-                            task_details_data=self.task_df.to_json(),
+                            task_details_data=task_details_data,
+                            # task_details_data=self.task_df.to_json(),
                             skill_set_data=self.skill_set_data.to_json(),
                             start_date_str=start_date,
                             end_date_str=end_date,
