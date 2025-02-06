@@ -50,7 +50,10 @@ class Application(tk.Frame):
         tk.Label(self, text="Members skill set").grid(row=2, column=0, padx=10, pady=5, sticky='w')
         self.skillset_entry = tk.Text(self, height=1, width=40)
         self.skillset_entry.grid(row=2, column=1, padx=10, pady=5, sticky='we')
-        tk.Button(self, text="Browse", command=lambda e=self.skillset_entry, l="Members skill set": self.browse_file(e, l), width=10).grid(row=2, column=2, padx=10, pady=5)
+        
+        # btn_skillset = tk.Button(self, text="Browse", command=lambda e=self.skillset_entry, l="Members skill set": self.browse_file(e, l), width=10).grid(row=2, column=2, padx=10, pady=5)
+        self.btn_skillset = tk.Button(self, text="Browse", command=lambda e=self.skillset_entry, l="Members skill set": self.browse_file(e, l), width=10)
+        self.btn_skillset.grid(row=2, column=2, padx=10, pady=5)
         
         # Template download link
         text_widget = tk.Text(self, height=1, width=40, font=("Helvetica", 8), bd=0, bg=self.cget("bg"))
@@ -65,7 +68,10 @@ class Application(tk.Frame):
          # Text area to display all selected files
         self.input_details_entry = tk.Text(self, height=5, width=40)
         self.input_details_entry.grid(row=5, column=1, padx=10, pady=5)
-        tk.Button(self, text="Browse", command=lambda e=self.input_details_entry, l="SS Documents": self.browse_file(e, l), width=10).grid(row=5, column=2, padx=10, pady=5)
+        
+        # btn_ss_documents = tk.Button(self, text="Browse", command=lambda e=self.input_details_entry, l="SS Documents": self.browse_file(e, l), width=10).grid(row=5, column=2, padx=10, pady=5)
+        self.btn_ss_documents = tk.Button(self, text="Browse", command=lambda e=self.input_details_entry, l="SS Documents": self.browse_file(e, l), width=10)
+        self.btn_ss_documents.grid(row=5, column=2, padx=10, pady=5)
         
         # Template download link
         # text_widget = tk.Text(self, height=1, width=40, font=("Helvetica", 8), bd=0, bg=self.cget("bg"))
@@ -91,7 +97,10 @@ class Application(tk.Frame):
         self.end_date_entry.bind("<<DateEntrySelected>>", self.validate_dates)
 
         # Start and Cancel button
-        tk.Button(self, text="Start", command=self.button_starter, width=10).grid(row=11, column=1, padx=10, pady=10, sticky='e')
+        # btn_start = tk.Button(self, text="Start", command=self.button_starter, width=10).grid(row=11, column=1, padx=10, pady=10, sticky='e')
+        self.btn_start = tk.Button(self, text="Start", command=self.button_starter, width=10)
+        self.btn_start.grid(row=11, column=1, padx=10, pady=10, sticky='e')
+        
         tk.Button(self, text="Cancel", command=self.master.destroy, width=10).grid(row=11, column=2, padx=10, pady=10, sticky='w')
     
        
@@ -214,6 +223,10 @@ class Application(tk.Frame):
         # if self.compare_excel(self.skillset_file, 'MEMBERS_SKILLSET.xlsx') == False:
         #     return
         
+        self.btn_start["state"] = tk.DISABLED
+        self.btn_skillset["state"] = tk.DISABLED
+        self.btn_ss_documents["state"] = tk.DISABLED
+        
         # Read skillset data
         self.skill_set_data = self.read_file(self.skillset_file, 3, None)
         if self.skill_set_data is None:
@@ -227,6 +240,10 @@ class Application(tk.Frame):
 
         # send second request to get wbs details
         self.send_data_to_chatai()
+        
+        self.btn_start["state"] = tk.NORMAL
+        self.btn_skillset["state"] = tk.NORMAL
+        self.btn_ss_documents["state"] = tk.NORMAL
     
     def compare_excel(self, file, template_file): 
         try:
