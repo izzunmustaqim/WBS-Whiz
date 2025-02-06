@@ -168,6 +168,8 @@ class Application(tk.Frame):
                         self.skillset_file = file_path
                     else:
                         self.task_details_file = file_path
+                else:
+                    messagebox.showerror("Error", "No file is selected.")
 
                 entry.insert(tk.END, file_path)
                 entry.config(state=tk.DISABLED)
@@ -626,10 +628,10 @@ class Application(tk.Frame):
     def check_file_validity(self, sheet_names, workbook, file_path):
         error_msg = ""
         file_size = os.path.getsize(file_path)
-        max_mb = 2000000 * 1024 * 1024  # 2M MB in bytes
+        max_mb = 25 * 1024 * 1024  # 25MB in bytes
         if file_size > max_mb:
             # raise ValueError("The file is too large. Please upload a smaller file size")
-            error_msg = "Error! The file is too large. Please upload a smaller file size"
+            error_msg = "Error! The file is too large. Please upload a file smaller than 25MB"
             self.is_file_valid=False
             return error_msg
             # print(f"File size: {file_size} bytes")

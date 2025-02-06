@@ -45,7 +45,7 @@ prompt = (
             # "Ensure that everyone starts their next task only after completing the previous one."
             
             "As a project manager, create a WBS for the project. The input are the task details and the skill set of the team members."
-            #"Make sure all Plan Start date and Plan End date are date with no strings"
+            "Make sure all Plan Start date and Plan End date are date with no strings"
             "It should only consist of:"
             "| Item No. | Task Description: {task_description} | Assigned to: {assigned_to} | Progress: {progress} | Plan Start date: {plan_start_date} | Plan End date: {plan_end_date} |\n"
             
@@ -66,11 +66,13 @@ prompt = (
             "In the start of the project, make sure everyone is start at the same date despite the complexity of the task and seniority level."
             "Ensure that everyone starts their next task only after completing the previous one."
             "For example, member A is assigned to Task 1 which ends at Date A. The next task for member A should start at Date A+1 (if and only if Date A+1 is not Saturday and Sunday) "
+            "Make sure the format of the date is ('mm/dd/YYYY') exactly like the given start date"
 
             "#Requirement for Plan End Date:"
             "Please estimate the duration of each task without including it in the result. Then, set the start date and end date based on the duration."
             "Please use the date range from the input data for start date = {start_date_str} and end date = {end_date_str} for each of the task."
             "If any of the tasks requires more time that exceed the {end_date_str}, just use the {end_date_str} for the plan end date."
+            "Make sure the format of the date is ('mm/dd/YYYY') exactly like the given end date"
         
         )
 
