@@ -295,6 +295,17 @@ class Application(tk.Frame):
     def read_file(self, file, rowskip=0, rangecol=None):
         # print(file, rowskip, rangecol)
         try:
+            file_size = os.path.getsize(file)
+            max_mb = 25 * 1024 * 1024  # 25MB in bytes
+            if file_size > max_mb:
+                messagebox.showerror("Error","The member skillset file is too large. Please upload a file smaller than 25MB and try again")
+                self.browse_file(self.skillset_entry, "Members skill set")
+                self.btn_start["state"] = tk.NORMAL
+                self.btn_skillset["state"] = tk.NORMAL
+                self.btn_ss_documents["state"] = tk.NORMAL
+                sys.exit()
+
+
             file_data = pd.read_excel(file, skiprows=rowskip, usecols=rangecol)  # Read Excel file using pandas
             
             # Check if the file is empty
@@ -319,13 +330,30 @@ class Application(tk.Frame):
         except Exception as e:
             messagebox.showerror("Error", f"Failed to read Excel file: {e}")
             return None
+    
+    def process_step(self):
+        current_value = self.progress["value"]
+        if current_value < 100:
+            self.progress["value"] = current_value + 1
+        else:
+            self.progress["value"] = 0  # Reset to 0 once it reaches 100
+        self.master.after(100, self.process_step)  # Update every 100 milliseconds
 
     def read_ss_folder_files(self):
         self.is_file_valid = True
         self.selected_folder_file = []
         self.task_list.clear()
+        is_ss_doc = False
         
-        
+        # Call the method to create the status section
+        self.create_result_section()
+
+        self.progress["value"] = 0
+        self.status_label.config(text="Processing input data...")
+
+        # # Simulate sending data to ChatAI
+        self.master.after(100, self.process_step)
+
         # Variables to store file paths based on keywords
         application_detailed_specification_files = []
         event_process_diagram_history_files = []
@@ -335,18 +363,30 @@ class Application(tk.Frame):
         for file_path in self.ss_folder_file:
 
             if "Application Detailed Specification" in file_path:
+                is_ss_doc = True
                 application_detailed_specification_files.append(file_path)
                 
-            elif "Event Process Sequence Diagram History" in file_path:
-                event_process_diagram_history_files.append(file_path)
+            # elif "Event Process Sequence Diagram History" in file_path:
+            #     event_process_diagram_history_files.append(file_path)
 
             elif "Screen Layout" in file_path:
+                is_ss_doc = True
                 screen_layout_files.append(file_path)
-                # Define the regular expression pattern to match the desired part
+                # Define the regular expression pattern to match the desired part   
+
+        if is_ss_doc == False:
+            messagebox.showerror("Error", "No SS documents found in the folder. Please choose the correct folder and try again")
+            self.browse_file(self.input_details_entry, "SS Documents")
+            self.btn_start["state"] = tk.NORMAL
+            self.btn_skillset["state"] = tk.NORMAL
+            self.btn_ss_documents["state"] = tk.NORMAL
+            self.remove_result_section()
+            sys.exit()
                 
         # Print the results
         print("\nScreen Layout Files:")
         for file in screen_layout_files:
+
             sheetName = "項目定義"
             keywordsHeader = ['画面項目名\n/Screen Item Name', 'タイプ\n/ Type']
 
@@ -362,6 +402,7 @@ class Application(tk.Frame):
             error_message = self.check_file_validity(sheet_names, workbook, file)
 
             if self.is_file_valid:
+                
                 self.screen_layout_json = self.read_screen_layout(file, sheetName, keywordsHeader)
                 print(f"{self.screen_layout_json}")
             
@@ -371,6 +412,7 @@ class Application(tk.Frame):
                 self.btn_start["state"] = tk.NORMAL
                 self.btn_skillset["state"] = tk.NORMAL
                 self.btn_ss_documents["state"] = tk.NORMAL
+                self.remove_result_section()
                 sys.exit()
 
         print("Application Detailed Specification Files:")
@@ -398,6 +440,7 @@ class Application(tk.Frame):
                 self.btn_start["state"] = tk.NORMAL
                 self.btn_skillset["state"] = tk.NORMAL
                 self.btn_ss_documents["state"] = tk.NORMAL
+                self.remove_result_section()
                 sys.exit()
                 
 
@@ -406,6 +449,7 @@ class Application(tk.Frame):
         json_list = [{'Item No': i + 1, 'Task Description': task} for i, task in enumerate(self.task_list)]
         # Convert to JSON string
         json_string = json.dumps(json_list, indent=4)
+        self.progress["value"] = 100
 
         print(json_string)
         return json_string
@@ -631,7 +675,7 @@ class Application(tk.Frame):
         max_mb = 25 * 1024 * 1024  # 25MB in bytes
         if file_size > max_mb:
             # raise ValueError("The file is too large. Please upload a smaller file size")
-            error_msg = "Error! The file is too large. Please upload a file smaller than 25MB"
+            error_msg = "Error! The SS file is too large. Please upload a file smaller than 25MB"
             self.is_file_valid=False
             return error_msg
             # print(f"File size: {file_size} bytes")
@@ -822,23 +866,17 @@ class Application(tk.Frame):
         print(json_string)
         return json_string
 
-    def process_step(self):
-        current_value = self.progress["value"]
-        if current_value < 100:
-            self.progress["value"] = current_value + 1
-        else:
-            self.progress["value"] = 0  # Reset to 0 once it reaches 100
-        self.master.after(100, self.process_step)  # Update every 100 milliseconds
+    
     
     def request_task_details(self, tasks_list_json):
         try:
-            # Call the method to create the status section
-            self.create_result_section()
+            # # Call the method to create the status section
+            # self.create_result_section()
 
             self.progress["value"] = 0
             self.status_label.config(text="Sending request to get task complexity...")
 
-            # Simulate sending data to ChatAI
+            # # Simulate sending data to ChatAI
             self.master.after(100, self.process_step)
 
             # encoded_image = self.encode_image(self.flowchart_image_path)
@@ -914,6 +952,7 @@ class Application(tk.Frame):
         finally:
             # self.status_label.config(text="Process Task Details has completed successfully. Creating WBS is in progress.")
             self.progress["value"] = 100
+            
 
     # Send data for wbs - request 2
     def send_data_to_chatai(self):
@@ -997,7 +1036,8 @@ class Application(tk.Frame):
             self.status_label.config(text="Process has completed successfully. You may download the WBS file using the download button below.")
             self.progress["value"] = 100
             self.download_button.grid()
-            self.progress.grid_forget()
+            if hasattr(self, 'progress'):
+                self.progress.grid_forget()
 
     def download_result(self):
         try:
